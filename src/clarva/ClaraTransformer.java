@@ -8,12 +8,8 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-
-import boomerang.AliasFinder;
 import clarva.analysis.CFGAnalysis;
 import clarva.analysis.MethodsAnalysis;
 import clarva.analysis.ResidualAnalysis;
@@ -24,23 +20,15 @@ import compiler.Compiler;
 import compiler.Global;
 import compiler.ParseException;
 import compiler.ParsingString;
-import difflib.DiffUtils;
-import difflib.StringUtills;
-import soot.MethodOrMethodContext;
 import soot.Scene;
 import soot.SceneTransformer;
 import soot.SootMethod;
-import soot.Unit;
-import soot.jimple.infoflow.solver.cfg.InfoflowCFG;
 import soot.jimple.toolkits.callgraph.CallGraph;
-import fsm.*;
 import fsm.date.DateFSM;
-import fsm.date.DateLabel;
 import fsm.date.ForEach;
 import fsm.date.SubsetDate;
 import fsm.helper.Pair;
 import main.DateToFSM;
-import fsm.Event;
 
 public class ClaraTransformer extends SceneTransformer{
 

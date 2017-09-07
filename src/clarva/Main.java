@@ -1,42 +1,17 @@
 package clarva;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.Map.Entry;
-
-import boomerang.preanalysis.PreparationTransformer;
-import compiler.Compiler;
-import compiler.Event;
-import compiler.EventCollection;
-import compiler.Global;
-import compiler.Methods;
-import compiler.ParseException;
-import compiler.ParsingString;
-import compiler.Property;
-import compiler.Trigger;
-import fsm.date.DateFSM;
-import fsm.date.events.MethodCall;
 import soot.G;
-import soot.MethodOrMethodContext;
 import soot.PackManager;
 import soot.Scene;
 import soot.SootClass;
 import soot.SootMethod;
 import soot.Transform;
-import soot.Type;
-import soot.jimple.toolkits.callgraph.CallGraph;
 import soot.options.Options;
 
 public class Main {
