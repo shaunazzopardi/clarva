@@ -4,7 +4,7 @@ Residual analysis for properties as symbolic automata
 cLARVA (= [clara](https://github.com/Sable/clara) + [LARVA](http://www.cs.um.edu.mt/svrg/Tools/LARVA/)) is a tool aimed to reduce some of the overheads associated with runtime verification.
 
 **Input**: 
-1. *filePath to* DATE property --- an automata specifying the violating traces of the previous program (through AspectJ notions) with transitions over events (method calls) and conditions encoding data state.
+1. *filePath to* DATE property --- an automata specifying the violating traces of the previous program (through AspectJ notions) with transitions over events (method calls) and conditions encoding data state (see [Larva Manual](http://www.cs.um.edu.mt/svrg/Tools/LARVA/LARVA-manual.pdf) for the syntax of DATEs).
 2. *root directory of* compiled Java program (in eclipse, the bin directory); and
 3. *Canonical name* of the Main class of program (of the form \<package-name\>.\<class-name\>);
       
