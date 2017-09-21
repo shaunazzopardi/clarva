@@ -6,7 +6,7 @@ cLARVA (= [clara](https://github.com/Sable/clara) + [LARVA](http://www.cs.um.edu
 **Input**: 
 1. *filePath to* DATE property --- an automata specifying the violating traces of the previous program (through AspectJ notions) with transitions over events (method calls) and conditions encoding data state.
 2. *root directory of* compiled Java program (in eclipse, the bin directory); and
-3. *Canonical name* of the Main class of program (of the form <package-name>.<class-name>);
+3. *Canonical name* of the Main class of program (of the form \<package-name\>.\<class-name\>);
       
 **Output**: A DATE that is a pruned version of Input (1), with which it is enough to monitor Input (2).
 
