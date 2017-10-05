@@ -18,29 +18,13 @@ public class Main {
 	
 
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-		//String larvaProperty = "../Login/ppd/props_userInterface.lrv";
-		//String larvaProperty = "../Mondex/ppd/mondex_transaction_protocol.lrv";
-		//String larvaProperty = "../Mondex/ppd/purselistproperty.lrv";
-		//String larvaProperty = "../FiTS/lrv/larva2.lrv";
-	//	String larvaProperty = "../DateToFSM/lrv/bank.lrv";
-		
-		//String programPath = "C:/Users/User/Google Drive/Development/Java/workspace/LarvaBankSystem/bin";
-		//String programPath = "../LarvaBankSystem/bin";
-		//String programPath = "../Login/bin";
-		//String programPath = "../Mondex/bin";
-		///String programPath = "../FiTS/bin";
-		
-		//String mainMethod = "main.Main2";
-		//String mainClass = "transactionsystem.MyBenchmark";
-		
 		if(args.length < 3) System.out.println("Arguments must specify: (1) property files followed by the (2) program directory, and finally the (3) main class.");
 		List<String> properties = Arrays.asList(Arrays.copyOfRange(args, 0, args.length - 2));
 //		properties.remove(properties.size()-1);
 
 		String programPath = args[args.length - 2];
 		String mainClass = args[args.length - 1];
-		
+
 		ClaraTransformer.generateFiniteStateMachines(properties);
 	
 		Set<String> packagesToConsider = new HashSet<String>();

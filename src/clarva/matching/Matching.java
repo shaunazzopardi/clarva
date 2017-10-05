@@ -1,5 +1,11 @@
 package clarva.matching;
 
+import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -28,7 +34,39 @@ public class Matching {
 	public Matching(MethodsAnalysis ma){
 		this.ma = ma;
 	}
-	
+
+
+	public static void loadProgramClasses(File root) throws IOException {
+		if(root.isDirectory()){
+			File[] files = root.listFiles();
+
+			for(File f : files) {
+				loadProgramClasses(f);
+			}
+		}
+		else{
+			addURL(root.toURI().toURL());
+		}
+	}
+
+	//from https://stackoverflow.com/questions/1010919/adding-files-to-java-classpath-at-runtime
+	private static void addURL(URL u) throws IOException {
+
+		URLClassLoader sysloader = (URLClassLoader) ClassLoader.getSystemClassLoader();
+		Class sysclass = URLClassLoader.class;
+
+		try {
+			Method method = sysclass.getDeclaredMethod("addURL",  new Class[]{URL.class});
+			method.setAccessible(true);
+			method.invoke(sysloader, new Object[]{u});
+		} catch (Throwable t) {
+			t.printStackTrace();
+			throw new IOException("Error, could not add URL to system classloader");
+		}//end try catch
+
+	}//end method
+
+
 	public static Boolean matches(InvokeExpr expr, MethodCall methodEvent){
 		
 		SootMethod sootMethod = expr.getMethodRef().resolve();

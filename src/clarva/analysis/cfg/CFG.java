@@ -112,18 +112,18 @@ public class CFG extends FSM<Integer, Shadow>{
 			//and one incoming transition exactly
 			if(outgoingEvents.size() == 1
 					&& incomingEvents.size() == 1){
-				List<State<Integer,Shadow>> outgoingStates = 
-						new ArrayList<State<Integer,Shadow>>(state.outgoingTransitions.get(outgoingEvents.get(0)));
-				List<State<Integer,Shadow>> incomingStates = 
-						new ArrayList<State<Integer,Shadow>>(state.incomingTransitions.get(incomingEvents.get(0)));
+				List<Integer> outgoingStates =
+						new ArrayList<Integer>(state.outgoingTransitions.get(outgoingEvents.get(0)));
+				List<Integer> incomingStates =
+						new ArrayList<Integer>(state.incomingTransitions.get(incomingEvents.get(0)));
 				
 				//if the outgoing and incoming event are both epsilon events
 				if(outgoingEvents.get(0).label.epsilon
 						&& outgoingStates.size() == 1
 						&& incomingEvents.get(0).label.epsilon
 						&& incomingStates.size() == 1){
-					State<Integer, Shadow> outgoingState = outgoingStates.get(0);
-					State<Integer, Shadow> incomingState = incomingStates.get(0);
+					State<Integer, Shadow> outgoingState = state.parent.labelToState.get(outgoingStates.get(0));
+					State<Integer, Shadow> incomingState = state.parent.labelToState.get(incomingStates.get(0));
 					
 					
 					//if the current state has no internal fsm or the outgoing state has no internal fsm
