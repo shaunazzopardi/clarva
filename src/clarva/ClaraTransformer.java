@@ -28,7 +28,7 @@ import fsm.date.DateFSM;
 import fsm.date.ForEach;
 import fsm.date.SubsetDate;
 import fsm.helper.Pair;
-import main.DateToFSM;
+import fsm.main.DateToFSM;
 
 public class ClaraTransformer extends SceneTransformer{
 

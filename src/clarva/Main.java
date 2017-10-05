@@ -18,7 +18,10 @@ public class Main {
 	
 
 	public static void main(String[] args) {
-		if(args.length < 3) System.out.println("Arguments must specify: (1) property files followed by the (2) program directory, and finally the (3) main class.");
+		if(args.length < 3) {
+			System.out.println("Arguments must specify: (1) property files followed by the (2) program directory, and finally the (3) main class.");
+			return;
+		}
 		List<String> properties = Arrays.asList(Arrays.copyOfRange(args, 0, args.length - 2));
 //		properties.remove(properties.size()-1);
 
