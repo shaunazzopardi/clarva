@@ -507,8 +507,6 @@ public class DateFSM extends FSM<String, DateLabel>{
 				hoareTripleMethods = String.join(",", this.stateHoareTripleMethod.get(state.label));
 			}
 			representation += "\t" + state.label + "{" + hoareTripleMethods + "}\n";    		}
-		representation += "\n}";
-
 		representation += "\n}\n";
 
 		representation += "BAD{\n";
@@ -520,7 +518,7 @@ public class DateFSM extends FSM<String, DateLabel>{
 			}
 			representation += "\t" + state.label + "{" + hoareTripleMethods + "}\n";
 		}
-		representation += "\n}";
+		representation += "\n}\n";
 
 		representation += "NORMAL{\n";
 		Set<State<String,DateLabel>> normalStates = new HashSet<State<String,DateLabel>>();

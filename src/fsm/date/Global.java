@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 public class Global {
 
@@ -113,6 +114,8 @@ public class Global {
 		
 		}
 
+		List<compiler.EventCollection> eventCollections = new ArrayList<>();
+
 		if(!events.events.isEmpty()){
 			representation += "EVENTS{\n\n";
 			for(compiler.Trigger trigger : events.events.values()){
@@ -123,41 +126,48 @@ public class Global {
 					}
 				}
 				else if(trigger instanceof compiler.EventCollection){
-					compiler.EventCollection eventCollection = (compiler.EventCollection) trigger;
-					
+					eventCollections.add((compiler.EventCollection) trigger);
+				}
+			}
+
+			for(compiler.EventCollection eventCollection : eventCollections) {
+
+				if(eventCollection.events.size() == 1){
+					Trigger trig = eventCollection.events.get(0);
+					representation = representation.replaceAll(Pattern.quote(trig.name.toString()), trig.name.toString().substring(1, trig.name.toString().length() - 1));
+				}
+				else {
 					String events = "";
-					for(int i = 0; i < eventCollection.events.size(); i++){
+					for (int i = 0; i < eventCollection.events.size(); i++) {
 						Trigger trig = eventCollection.events.get(i);
-						
-						if(trig instanceof Event){
-							if(DateFSM.triggerToMethodCall.keySet().contains(trig)){
-								if(!events.equals("")){
+
+						if (trig instanceof Event) {
+							if (DateFSM.triggerToMethodCall.keySet().contains(trig)) {
+								if (!events.equals("")) {
 									events += "|";
 								}
 								events += trig.getName().toString();
 							}
 						}
 					}
-					
-					if(!events.equals("")){
-						representation += "\t" + eventCollection.getName().toString() + " = {" + events + "}";
-						if(!eventCollection.filter.isEmpty()){
+
+					if (!events.equals("")) {
+						representation += "\t" + eventCollection.getName().toString() + "() = {" + events + "}";
+						if (!eventCollection.filter.isEmpty()) {
 							representation += "filter {";
-							for(Token token : eventCollection.filter){
+							for (Token token : eventCollection.filter) {
 								representation += token.toString() + ";";
 							}
 							representation += "}";
 						}
-						
+
 						representation += "\n";
 					}
-					
-				//	representation += "}\n";
 				}
 			}
+			//	representation += "}\n";
 			
 			representation += "\n}\n\n";
-		
 		}
 		
 		for(DateFSM prop : this.properties){
