@@ -59,7 +59,7 @@ public class ClaraTransformer extends SceneTransformer{
 			residualGlobals.add(computeGlobalResidual(global));
 			
 			try{
-			    PrintWriter writer = new PrintWriter(dateFSMHierarchy.indexOf(global) + "-residual.lrv", "UTF-8");
+			    PrintWriter writer = new PrintWriter(dateFSMHierarchy.indexOf(global) + "residual.lrv", "UTF-8");
 			    writer.println(residualGlobals.get(residualGlobals.size()-1));
 			    writer.close();
 			} catch (IOException e) {

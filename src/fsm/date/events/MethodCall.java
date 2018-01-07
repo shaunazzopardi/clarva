@@ -120,26 +120,26 @@ public class MethodCall extends DateEvent{
 				parameterIdentifiers.add(identifier);
 			}
 
-			if(event.type.toString() == fsm.date.events.MethodCall.ActionType.uponThrowing.toString())
+			if(event.type.toString().equals(fsm.date.events.MethodCall.ActionType.uponThrowing.toString()))
 			{
 				type = fsm.date.events.MethodCall.ActionType.uponThrowing;
 			}
-			else if(event.type.toString() == fsm.date.events.MethodCall.ActionType.uponReturning.toString())
+			else if(event.type.toString().equals(fsm.date.events.MethodCall.ActionType.uponReturning.toString()))
 			{
 				type = fsm.date.events.MethodCall.ActionType.uponReturning;
 			}
-			else if(event.type.toString() == fsm.date.events.MethodCall.ActionType.uponHandling.toString())
+			else if(event.type.toString().equals(fsm.date.events.MethodCall.ActionType.uponHandling.toString()))
 			{
 				type = fsm.date.events.MethodCall.ActionType.uponHandling;
 			}
-			else if(event.type.toString() == fsm.date.events.MethodCall.ActionType.uponThrowing.toString())
+			else if(event.type.toString().equals(fsm.date.events.MethodCall.ActionType.uponThrowing.toString()))
 			{
 				type = fsm.date.events.MethodCall.ActionType.uponThrowing;
 			}
-			else if(event.type.toString() == fsm.date.events.MethodCall.ActionType.before.toString())
+			else if(event.type.toString().equals(fsm.date.events.MethodCall.ActionType.before.toString()))
 			{
 				type = fsm.date.events.MethodCall.ActionType.before;
-			}else if(event.type.toString() == fsm.date.events.MethodCall.ActionType.uponEntry.toString())
+			}else if(event.type.toString().equals(fsm.date.events.MethodCall.ActionType.uponEntry.toString()))
 			{
 				type = fsm.date.events.MethodCall.ActionType.uponEntry;
 			}
@@ -263,26 +263,26 @@ public class MethodCall extends DateEvent{
 				parameterIdentifiers.add(parameterList.get(i + 1).toString().replace(" ", ""));
 			}
 
-			if(event.type.toString() == fsm.date.events.MethodCall.ActionType.uponThrowing.toString())
+			if(event.type.toString().equals(fsm.date.events.MethodCall.ActionType.uponThrowing.toString()))
 			{
 				type = fsm.date.events.MethodCall.ActionType.uponThrowing;
 			}
-			else if(event.type.toString() == fsm.date.events.MethodCall.ActionType.uponReturning.toString())
+			else if(event.type.toString().equals(fsm.date.events.MethodCall.ActionType.uponReturning.toString()))
 			{
 				type = fsm.date.events.MethodCall.ActionType.uponReturning;
 			}
-			else if(event.type.toString() == fsm.date.events.MethodCall.ActionType.uponHandling.toString())
+			else if(event.type.toString().equals(fsm.date.events.MethodCall.ActionType.uponHandling.toString()))
 			{
 				type = fsm.date.events.MethodCall.ActionType.uponHandling;
 			}
-			else if(event.type.toString() == fsm.date.events.MethodCall.ActionType.uponThrowing.toString())
+			else if(event.type.toString().equals(fsm.date.events.MethodCall.ActionType.uponThrowing.toString()))
 			{
 				type = fsm.date.events.MethodCall.ActionType.uponThrowing;
 			}
-			else if(event.type.toString() == fsm.date.events.MethodCall.ActionType.before.toString())
+			else if(event.type.toString().equals(fsm.date.events.MethodCall.ActionType.before.toString()))
 			{
 				type = fsm.date.events.MethodCall.ActionType.before;
-			}else if(event.type.toString() == fsm.date.events.MethodCall.ActionType.uponEntry.toString())
+			}else if(event.type.toString().equals(fsm.date.events.MethodCall.ActionType.uponEntry.toString()))
 			{
 				type = fsm.date.events.MethodCall.ActionType.uponEntry;
 			}
@@ -484,10 +484,10 @@ public class MethodCall extends DateEvent{
 			if(this.isConstructor)
 				System.out.println("");
 
-			if(action.objectType == this.objectType){
-				if(action.name == this.name){
-					if(action.returnType == this.returnType
-							&& action.returnIdentifier == this.returnIdentifier){
+			if(action.objectType.equals(this.objectType)){
+				if(action.name.equals(this.name)){
+					if(action.returnType.equals(this.returnType)
+							&& action.returnIdentifier.equals(this.returnIdentifier)){
 						
 						if(action.argTypes.size() == this.argTypes.size()){
 							
@@ -549,12 +549,13 @@ public class MethodCall extends DateEvent{
 		
 		definition += ") = {";
 		
-		if(objectType != ""){
-			if(objectIdentifier != ""
+		if(!objectType.equals("")){
+			if(!objectIdentifier.equals("")
 					&& argIdentifiers.contains(objectIdentifier)){
 				definition += objectIdentifier;
 			}
-			else if (objectIdentifier == "") definition += objectType;
+			else if (objectIdentifier.equals("")) definition += objectType;
+			else if(objectType.equals("*") && objectIdentifier.equals("*")) definition += "*";
 			else definition += objectType + " " + objectIdentifier;
 		}
 		else{
@@ -569,7 +570,7 @@ public class MethodCall extends DateEvent{
 			if(argIdentifiers.contains(argIdentifiers.get(i))){
 				definition += argIdentifiers.get(i);
 			}
-			else if(argIdentifiers.get(i) == ""){
+			else if(argIdentifiers.get(i).equals("")){
 				definition += argTypes.get(i);
 			}
 			else definition += argTypes.get(i) + " " + argIdentifiers.get(i);
