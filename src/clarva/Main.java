@@ -6,6 +6,8 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+
+import clarva.java.ClaraTransformer;
 import soot.G;
 import soot.PackManager;
 import soot.Scene;
@@ -19,31 +21,37 @@ public class Main {
 
 	public static void main(String[] args) {
 		if(args.length < 3) {
-			System.out.println("Arguments must specify: (1) property files followed by the (2) program directory, and finally the (3) main class.");
+			System.out.println("Arguments must specify: (0) language to be analysed (options: java) (1) property files followed by the (2) program directory, and finally the (3) main class.");
 			return;
 		}
-		List<String> properties = Arrays.asList(Arrays.copyOfRange(args, 0, args.length - 2));
+
+		if(args[0] == "java") {
+			List<String> properties = Arrays.asList(Arrays.copyOfRange(args, 1, args.length - 2));
 //		properties.remove(properties.size()-1);
 
-		String programPath = args[args.length - 2];
-		String mainClass = args[args.length - 1];
+			String programPath = args[args.length - 2];
+			String mainClass = args[args.length - 1];
 
-		ClaraTransformer.generateFiniteStateMachines(properties);
-	
-		Set<String> packagesToConsider = new HashSet<String>();
-		
-		for(fsm.date.Global global : ClaraTransformer.dateFSMHierarchy){
-			packagesToConsider.addAll(Arrays.asList(global.imports.replaceAll(";","").replaceAll("import ", "").replaceAll("\r", "").replaceAll(" ", "").split("\n")));
+			ClaraTransformer.generateFiniteStateMachines(properties);
+
+			Set<String> packagesToConsider = new HashSet<String>();
+
+			for (fsm.date.Global global : ClaraTransformer.dateFSMHierarchy) {
+				packagesToConsider.addAll(Arrays.asList(global.imports.replaceAll(";", "").replaceAll("import ", "").replaceAll("\r", "").replaceAll(" ", "").split("\n")));
+			}
+			packagesToConsider.remove("");
+			//must add all libraries imported by class files
+			//	packagesToConsider.add("transactionsystem.*");
+			packagesToConsider.add("java.lang.*");
+			packagesToConsider.add("java.util.*");
+			//	packagesToConsider.add("java.io.*");
+		   	initializeSoot(mainClass, programPath, packagesToConsider);
+
+			System.exit(0);
 		}
-		packagesToConsider.remove("");
-		//must add all libraries imported by class files
-	//	packagesToConsider.add("transactionsystem.*");
-		packagesToConsider.add("java.lang.*");
-		packagesToConsider.add("java.util.*");
-	//	packagesToConsider.add("java.io.*");
-		initializeSoot(mainClass, programPath, packagesToConsider);
-		
-		System.exit(0);
+		else{
+			System.out.println("Option " + args[0] + " not supported.");
+		}
 	}
 	
 	  @SuppressWarnings("static-access")

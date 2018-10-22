@@ -1,4 +1,4 @@
-package clarva;
+package clarva.java;
 
 import soot.Local;
 import soot.RefType;

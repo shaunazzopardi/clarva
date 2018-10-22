@@ -20,7 +20,7 @@ public class DateLabel {
 //		this.otherKindOfEvent = otherKindOfEvent;
 //		this.condition = condition;
 //		this.action = action;
-//		this.event = null;
+//		this.dateEvent = null;
 //	}
 	
 	public boolean equals(Object obj){

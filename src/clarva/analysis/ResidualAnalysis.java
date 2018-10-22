@@ -10,80 +10,81 @@ import java.util.Map;
 import java.util.Set;
 
 import clarva.analysis.cfg.CFG;
-import clarva.analysis.cfg.Shadow;
-import clarva.matching.Matching;
+import clarva.analysis.cfg.CFGEvent;
+import clarva.java.JavaMethodIdentifier;
+import clarva.java.Shadow;
+import clarva.matching.Aliasing;
+import clarva.matching.MethodIdentifier;
 import fsm.Event;
-import fsm.FSM;
 import fsm.date.DateFSM;
-import fsm.date.DateLabel;
 import fsm.date.SubsetDate;
-import fsm.date.events.MethodCall;
+import fsm.date.events.DateEvent;
 import fsm.helper.Pair;
 import soot.MethodOrMethodContext;
-import soot.Scene;
-import soot.Unit;
 
 public class ResidualAnalysis {
 
-	public static SubsetDate QuickCheckAnalysis(DateFSM property, MethodsAnalysis ma){
-		List<MethodCall> usedActions = new ArrayList<MethodCall>();
-		
-		for(MethodCall event : ma.dateEventToSootMethods.keySet()){
-			if(ma.dateEventToSootMethods.get(event) != null
-					&& ma.dateEventToSootMethods.get(event).size() != 0) 
-				usedActions.add(event);
-		}
-		
-		return new SubsetDate(property, usedActions);
+	public static SubsetDate QuickCheckAnalysis(DateFSM property,
+                                                List<DateEvent> allEvents){
+		return new SubsetDate(property, allEvents);
 	}
 	
-	public static Map<Shadow, SubsetDate> OrphansAnalysis(DateFSM f, MethodsAnalysis ma, Matching an){
-		Map<Shadow, SubsetDate> residuals = new HashMap<Shadow, SubsetDate>();
+//	public static Map<Shadow, SubsetDate> OrphansAnalysis(DateFSM f, MethodsAnalysis ma, Matching an){
+	public static <T extends CFGEvent> Map<T, SubsetDate> OrphansAnalysis(DateFSM f,
+                                                          Set<T> allCFGEvents,
+                                                          Aliasing aliasing){
+		Map<T, SubsetDate> residuals = new HashMap<>();
 		//Map<Shadow, Set<Shadow>> compatibleShadows = new HashMap<Shadow, Set<Shadow>>();
 		
-		if(ma.allShadows.size() == 0) residuals.put(new Shadow(), new SubsetDate(f));
-		for(Shadow s : ma.allShadows){
-			Set<MethodCall> eventsToKeep = new HashSet<MethodCall>();
+//		if(allCFGEvents.size() == 0) residuals.put(new Shadow(), new SubsetDate(f));
+		for(T s : allCFGEvents){
+			Set<DateEvent> eventsToKeep = new HashSet<>();
 			
-			for(Shadow ss : ma.allShadows){
-				if(an.flowInsensitiveCompatible(s, ss)){
-					eventsToKeep.add((MethodCall) ss.event);
+			for(T ss : allCFGEvents){
+				if(aliasing.mayAlias(s, ss)){
+					eventsToKeep.add(ss.dateEvent);
 				}
 			}
 			
-			SubsetDate shadowResidual = new SubsetDate(f, new ArrayList<MethodCall>(eventsToKeep));
+			SubsetDate shadowResidual = new SubsetDate(f, new ArrayList<>(eventsToKeep));
 			residuals.put(s, shadowResidual);
 		}
 		
 		return removeEmptyDates(residuals);
 	}
 
-	public static Pair<Map<Shadow, SubsetDate>, List<Pair<String,String>>> ControlFlowAnalysis(Map<Shadow, SubsetDate> residuals, MethodsAnalysis ma, CFGAnalysis cfga){
-		Map<MethodOrMethodContext, CFG> wholeProgramCFGApproximations = new HashMap<MethodOrMethodContext, CFG>();
+//	public static Pair<Map<Shadow, SubsetDate>, List<Pair<String,String>>> ControlFlowAnalysis(Map<Shadow, SubsetDate> residuals, MethodsAnalysis ma, CFGAnalysis cfga){
+	public static <T extends CFGEvent, S extends JavaMethodIdentifier> Map<T, SubsetDate> ControlFlowAnalysis(
+	        Map<T, SubsetDate> residuals,
+            Set<T> allShadows,
+            CFGAnalysis<T, S> cfga,
+            Aliasing<T> aliasing){
+
+		Map<S, CFG<T>> wholeProgramCFGApproximations = new HashMap<>();
 		
 		//methodFSM not keeping only reachable methods
-		for(MethodOrMethodContext method : cfga.methodCFG.keySet()){
-			CFG wholeProgramCFG = cfga.methodCFGToWholeProgramCFG(method);
+		for(S method : cfga.methodCFG.keySet()){
+			CFG<T> wholeProgramCFG = cfga.methodCFGToWholeProgramCFG(method);
 			wholeProgramCFGApproximations.put(method, wholeProgramCFG);
 		}
 		
-		List<Shadow> allShadowsUpToMustAlias = new ArrayList<Shadow>();
-		Map<Shadow, Set<Shadow>> mustAlias = new HashMap<Shadow, Set<Shadow>>();
+		List<T> allShadowsUpToMustAlias = new ArrayList<>();
+		Map<T, Set<T>> mustAlias = new HashMap<>();
 		
- 		for(Shadow s : ma.allShadows){
- 			Set<Shadow> must = new HashSet<Shadow>();
+ 		for(T s : allShadows){
+ 			Set<T> must = new HashSet<>();
  			mustAlias.put(s, must);
-			for(Shadow ss : ma.allShadows){
-				if(s == ss || s.mustAlias(ss)){
+			for(T ss : allShadows){
+				if(s == ss || aliasing.mustAlias(s, ss)){
 					must.add(ss);
 				}
 			}
 		}
  		
- 		for(Shadow s : ma.allShadows){
+ 		for(T s : allShadows){
  			
  			boolean includedAlready = false;
- 			for(Shadow ss : mustAlias.get(s)){
+ 			for(T ss : mustAlias.get(s)){
  				if(allShadowsUpToMustAlias.contains(ss)){
  					includedAlready = true;
  				}
@@ -92,16 +93,16 @@ public class ResidualAnalysis {
  			if(!includedAlready) allShadowsUpToMustAlias.add(s);
  		}
 		
-		residuals = removeEmptyDates(residuals);		
+		residuals = removeEmptyDates(residuals);
 
 		//first iteration should be over compatible shadow sets probably
-		for(Shadow s : allShadowsUpToMustAlias){
-			for(CFG approx : wholeProgramCFGApproximations.values()){		
+		for(T s : allShadowsUpToMustAlias){
+			for(CFG<T> approx : wholeProgramCFGApproximations.values()){
 				SubsetDate oldResidual = residuals.get(s);
-				SubsetDate newResidual = cfga.sufficientResidual(s, approx, oldResidual);
+				SubsetDate newResidual = cfga.sufficientResidual(s, approx, oldResidual, aliasing);
 				if(newResidual == null || newResidual.neverFails){
 //					System.out.println("here");
-					newResidual = cfga.sufficientResidual(s, approx, oldResidual);
+					newResidual = cfga.sufficientResidual(s, approx, oldResidual, aliasing);
 				}
 				residuals.put(s, newResidual);
 				
@@ -113,10 +114,10 @@ public class ResidualAnalysis {
 		residuals = removeEmptyDates(residuals);		
 			
 		//we should also check for transitions/eventsinthecomposition that only ever loop in the same state
-		Set<Event<Shadow>> toDisable = cfga.canBeDisabled;
-		Pair<Map<Shadow, SubsetDate>, List<Pair<String,String>>> residualsAndPPF = new Pair<Map<Shadow, SubsetDate>, List<Pair<String,String>>>(residuals, cfga.ppfs);
+		Set<Event<T>> toDisable = cfga.canBeDisabled;
+//		Pair<Map<T, SubsetDate>, List<Pair<String,String>>> residualsAndPPF = new Pair<>(residuals, cfga.ppfs);
 		
-		return residualsAndPPF;
+		return residuals;
 	}
 
 	public static SubsetDate residualsUnion(Map<Shadow, SubsetDate> residuals){
@@ -164,10 +165,10 @@ public class ResidualAnalysis {
 //		return intersectionOfResiduals;
 //	}
 	
-	private static Map<Shadow, SubsetDate> removeEmptyDates(Map<Shadow, SubsetDate> residuals){
-		List<Shadow> toRemove = new ArrayList<Shadow>();
+	private static <T extends CFGEvent> Map<T, SubsetDate> removeEmptyDates(Map<T, SubsetDate> residuals){
+		List<T> toRemove = new ArrayList<>();
 		
-		for(Shadow s : residuals.keySet()){
+		for(T s : residuals.keySet()){
 			SubsetDate respectiveDate = residuals.get(s);
 			if(respectiveDate == null
 					|| respectiveDate.neverFails){
@@ -175,7 +176,7 @@ public class ResidualAnalysis {
 			}
 		}
 		
-		for(Shadow s : toRemove){
+		for(T s : toRemove){
 			residuals.remove(s);
 		}
 		

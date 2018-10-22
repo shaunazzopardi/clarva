@@ -1,4 +1,4 @@
-package clarva;
+package clarva.java;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
@@ -10,16 +10,17 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import clarva.analysis.CFGAnalysis;
+import clarva.analysis.JavaCFGAnalysis;
 import clarva.analysis.MethodsAnalysis;
 import clarva.analysis.ResidualAnalysis;
-import clarva.analysis.cfg.Shadow;
-import clarva.matching.Matching;
 
+import clarva.analysis.cfg.CFGEvent;
+import clarva.matching.Aliasing;
 import compiler.Compiler;
 import compiler.Global;
 import compiler.ParseException;
 import compiler.ParsingString;
+import fsm.date.events.DateEvent;
 import soot.Scene;
 import soot.SceneTransformer;
 import soot.SootMethod;
@@ -85,10 +86,46 @@ public class ClaraTransformer extends SceneTransformer{
 		return global;
 	}
 
+	class JavaFlowInsensitiveAliasing implements Aliasing<Shadow> {
+
+		Matching an;
+
+		public JavaFlowInsensitiveAliasing(Matching an){
+			this.an = an;
+		}
+
+		@Override
+		public boolean mayAlias(Shadow cfgEvent1, Shadow cfgEvent2) {
+			return an.flowInsensitiveCompatible(cfgEvent1, cfgEvent2);
+		}
+
+		//this method should not be used
+		@Override
+		public boolean mustAlias(Shadow cfgEvent1, Shadow cfgEvent2) {
+			return cfgEvent1.mustAlias(cfgEvent2);
+		}
+	}
+
+	class JavaFlowSensitiveAliasing implements Aliasing<Shadow> {
+		public JavaFlowSensitiveAliasing(){
+		}
+
+		@Override
+		public boolean mayAlias(Shadow cfgEvent1, Shadow cfgEvent2) {
+			return cfgEvent1.mayAlias(cfgEvent2);
+		}
+
+		@Override
+		public boolean mustAlias(Shadow cfgEvent1, Shadow cfgEvent2) {
+			return cfgEvent1.mustAlias(cfgEvent2);
+		}
+	}
+
 	public DateFSM computeResidual(DateFSM property){
 		MethodsAnalysis ma = new MethodsAnalysis(Scene.v(), property.alphabet);
-		
-		SubsetDate residual = ResidualAnalysis.QuickCheckAnalysis(property, ma);
+
+		List<DateEvent> allUsedEvents = AnalysisAdaptor.allEvents(ma);
+		SubsetDate residual = ResidualAnalysis.QuickCheckAnalysis(property, allUsedEvents);
 		
 		System.out.println("After 1st:");
 		System.out.println(residual);
@@ -102,9 +139,18 @@ public class ClaraTransformer extends SceneTransformer{
 			Matching am = new Matching(ma);
 						
 			//need to reduce shadows up to must-alias here.. using less precise flow-insensitive points-to analysis
-			Map<Shadow,SubsetDate> residuals = ResidualAnalysis.OrphansAnalysis(residual, ma, am);
-			
-			SubsetDate unionOfResiduals2 = ResidualAnalysis.residualsUnion(residuals);
+			Map<Shadow,SubsetDate> residuals = ResidualAnalysis.OrphansAnalysis(residual,
+					ma.allShadows,
+					new JavaFlowInsensitiveAliasing(am));
+//			Map<Shadow,SubsetDate> residuals = ResidualAnalysis.OrphansAnalysis(residual, ma, am);
+
+			SubsetDate unionOfResiduals2;
+			if(residuals.size() == 0){
+				unionOfResiduals2 = new SubsetDate(residual);
+			}
+			else{
+				unionOfResiduals2 = ResidualAnalysis.residualsUnion(residuals);
+			}
 			
 			System.out.println("After 2nd:");
 			System.out.println(unionOfResiduals2);
@@ -116,11 +162,14 @@ public class ClaraTransformer extends SceneTransformer{
 //				return;
 			}
 			else{
-				CFGAnalysis cfga = new CFGAnalysis(ma);
+				JavaCFGAnalysis cfga = new JavaCFGAnalysis(ma);
 				
-				Pair<Map<Shadow, SubsetDate>, List<Pair<String, String>>> residualsAndPPF = ResidualAnalysis.ControlFlowAnalysis(residuals, ma, cfga);
+				residuals = ResidualAnalysis.ControlFlowAnalysis(residuals,
+                        ma.allShadows,
+                        cfga,
+                        new JavaFlowSensitiveAliasing());
 				
-				SubsetDate unionOfResiduals = ResidualAnalysis.residualsUnion(residualsAndPPF.first);
+				SubsetDate unionOfResiduals = ResidualAnalysis.residualsUnion(residuals);
 				
 				System.out.println("After 3rd:");
 				System.out.println(unionOfResiduals);

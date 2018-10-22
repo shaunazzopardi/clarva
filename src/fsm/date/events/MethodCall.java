@@ -58,9 +58,9 @@ public class MethodCall extends DateEvent{
 			within = event.within.toString();
 		}
 		else within = "";
-//		if(event.type != Event.EventType.channel
-//				&& event.type != Event.EventType.clock
-//				&& event.type != Event.EventType.clockCycle)
+//		if(dateEvent.type != Event.EventType.channel
+//				&& dateEvent.type != Event.EventType.clock
+//				&& dateEvent.type != Event.EventType.clockCycle)
 //		{
 			scriptFileActionName = event.getName().toString();
 			this.name = event.methodName.text;
@@ -212,9 +212,9 @@ public class MethodCall extends DateEvent{
 		}
 		else within = "";
 
-//		if(event.type != Event.EventType.channel
-//				&& event.type != Event.EventType.clock
-//				&& event.type != Event.EventType.clockCycle)
+//		if(dateEvent.type != Event.EventType.channel
+//				&& dateEvent.type != Event.EventType.clock
+//				&& dateEvent.type != Event.EventType.clockCycle)
 //		{
 			scriptFileActionName = event.getName().toString();
 			this.name = event.methodName.text;

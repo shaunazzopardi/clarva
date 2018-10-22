@@ -2,8 +2,6 @@ package clarva.analysis;
 
 import soot.MethodOrMethodContext;
 import soot.Scene;
-import soot.SootClass;
-import soot.SootMethod;
 import soot.Unit;
 import soot.Value;
 import soot.jimple.InstanceInvokeExpr;
@@ -26,14 +24,13 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import clarva.analysis.cfg.Shadow;
-import clarva.matching.Matching;
+import clarva.java.Shadow;
+import clarva.java.Matching;
 import fsm.Event;
 import fsm.date.DateFSM;
 import fsm.date.DateLabel;
 import fsm.date.events.MethodCall;
 import fsm.date.events.MethodCall.ActionType;
-import fsm.helper.Pair;
 
 public class MethodsAnalysis {
 
@@ -286,7 +283,7 @@ public class MethodsAnalysis {
 						}
 						
 						//for each matching DateLabel
-						//better to turn all these to match method calls rather than event<datelabel>
+						//better to turn all these to match method calls rather than dateEvent<datelabel>
 						List<MethodCall> matchingMethodCalls = sootMethodToDateEvents.get(invokedMethod.get(expr));
 
 						if(matchingMethodCalls != null

@@ -3,6 +3,7 @@ package fsm.date;
 import fsm.Event;
 import fsm.State;
 import fsm.Transition;
+import fsm.date.events.DateEvent;
 import fsm.date.events.MethodCall;
 
 import java.util.*;
@@ -17,7 +18,7 @@ public class SubsetDate extends DateFSM{
 		this.parent = parent;
 	}
 	//this constructor keeps also all transitions on channel and clock events
-	public SubsetDate(DateFSM parent, List<MethodCall> alphabetToKeep){
+	public SubsetDate(DateFSM parent, List<DateEvent> alphabetToKeep){
 		super(parent);
 
 		this.parent = parent;
@@ -36,13 +37,17 @@ public class SubsetDate extends DateFSM{
 			State<String,DateLabel> state = this.labelToState.get(label);
 			List<String> toKeep = new ArrayList<String>();
 			for(String method : this.stateHoareTripleMethod.get(state.label)){
-				for(MethodCall methodCall : alphabetToKeep){
-					String methodClass = method.split("\\.")[0];
-					String methodName = method.split("\\.")[1];
+				for(DateEvent dateEvent : alphabetToKeep) {
+					if (dateEvent.getClass().equals(MethodCall.class)) {
+						MethodCall methodCall = (MethodCall) dateEvent;
 
-					if(methodCall.name.equals(methodName)
-							&& methodCall.objectType.equals(methodClass)){
-						toKeep.add(method);
+ 						String methodClass = method.split("\\.")[0];
+						String methodName = method.split("\\.")[1];
+
+						if (methodCall.name.equals(methodName)
+								&& methodCall.objectType.equals(methodClass)) {
+							toKeep.add(method);
+						}
 					}
 				}
 			}
@@ -313,7 +318,7 @@ public class SubsetDate extends DateFSM{
 //
 //		representation += "TRANSITIONS{\n";
 //		for(Transition<String,DateLabel> t : this.transitions){
-//			representation += t.source + " -> " + t.destination + " [" + t.event.label.toString() + "]\n";
+//			representation += t.source + " -> " + t.destination + " [" + t.dateEvent.label.toString() + "]\n";
 //		}
 //		representation += "\n}";
 //		

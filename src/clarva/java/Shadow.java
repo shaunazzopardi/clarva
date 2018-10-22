@@ -1,12 +1,14 @@
-package clarva.analysis.cfg;
+package clarva.java;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import clarva.analysis.cfg.CFGEvent;
+import fsm.date.events.DateEvent;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import fsm.date.events.ChannelEvent;
 import fsm.date.events.ClockEvent;
-import fsm.date.events.DateEvent;
 import fsm.date.events.MethodCall;
 import soot.Local;
 import soot.SootMethod;
@@ -17,17 +19,14 @@ import soot.jimple.toolkits.pointer.InstanceKey;
 import soot.jimple.toolkits.pointer.LocalMustAliasAnalysis;
 import soot.jimple.toolkits.pointer.LocalMustNotAliasAnalysis;
 
-public class Shadow extends CFGEvent{
+public class Shadow extends CFGEvent {
 
 	public InvokeExpr invocation;
-	public DateEvent event;
 	public Map<String, InstanceKey> objectBinding = new HashMap<String, InstanceKey>();
 	public Stmt unit;
 	public SootMethod callingMethod;
 	public Map<String, Value> valueBinding;
-	
-	public boolean epsilon = false;
-	
+
 	public Shadow(){
 		this.epsilon = true;
 	}
@@ -38,18 +37,18 @@ public class Shadow extends CFGEvent{
 	}
 	
 	public Shadow(ChannelEvent event){
-		this.event = event;
+        super(event);
 		this.epsilon = true;
 	}
 	
 	public Shadow(ClockEvent event){
-		this.event = event;
+	    super(event);
 		this.epsilon = true;
 	}
 	
 	public Shadow(InvokeExpr invocation, Stmt unit, MethodCall event, Map<String, Value> valueBinding){
 		this.invocation = invocation;
-		this.event = event;
+		this.dateEvent = event;
 		this.unit = unit;
 		this.valueBinding = valueBinding;
 	}
@@ -58,7 +57,7 @@ public class Shadow extends CFGEvent{
 		this.callingMethod = method;
 		if(epsilon) return;
 		
-		MethodCall methodCallEvent = (MethodCall) event;
+		MethodCall methodCallEvent = (MethodCall) dateEvent;
 		for(String var : methodCallEvent.forEachVariables){
 			Local local = (Local) valueBinding.get(var);
 			Stmt stmt = (Stmt) unit;
@@ -125,9 +124,9 @@ public class Shadow extends CFGEvent{
 			if(other.unit != null
 					&& this.unit != null){
 				if(other.unit.equals(this.unit)){
-					if(other.event != null
-							&& this.event != null){
-						if(other.event.equals(this.event)
+					if(other.dateEvent != null
+							&& this.dateEvent != null){
+						if(other.dateEvent.equals(this.dateEvent)
 								&& this.invocation.equals(other.invocation)){
 							return true;
 						}
@@ -160,7 +159,7 @@ public class Shadow extends CFGEvent{
 				hcb.append(this.unit);
 			}
 	
-			if(this.event != null){
+			if(this.dateEvent != null){
 				hcb.append(this.unit);
 			}
 			

@@ -1,9 +1,8 @@
-package clarva.matching;
+package clarva.java;
 
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
@@ -14,7 +13,6 @@ import java.util.Set;
 import org.apache.commons.lang3.ClassUtils;
 
 import clarva.analysis.MethodsAnalysis;
-import clarva.analysis.cfg.Shadow;
 import fsm.date.events.MethodCall;
 import soot.Context;
 import soot.Local;
@@ -430,37 +428,37 @@ public class Matching {
 //		return null;
 //	}
 //	
-	//	public Boolean matches(SootMethod sootMethod, Event event){
+	//	public Boolean matches(SootMethod sootMethod, Event dateEvent){
 	//		Boolean classNameMatches = false;
 	//		Boolean methodNameMatches = false;
 	//		Boolean parameterTypeMatches = false;
 	//		Boolean returnTypeMatches = false;
 	//		
 	//		//Declaring Class Name Match
-	//		if(event.target.text == "*"
-	//				|| event.target.text == sootMethod.getDeclaringClass().getName()){
+	//		if(dateEvent.target.text == "*"
+	//				|| dateEvent.target.text == sootMethod.getDeclaringClass().getName()){
 	//			classNameMatches = true;
 	//		}
 	//		
 	//		//Method Name Match
-	//		if(event.methodName.text == sootMethod.getName()){
+	//		if(dateEvent.methodName.text == sootMethod.getName()){
 	//			methodNameMatches = true;
 	//		}
 	//
 	//		//Parameter Type Match
 	//
 	//		//Return Type Match
-	//		if(event.returned == null && sootMethod.getReturnType() == null){
+	//		if(dateEvent.returned == null && sootMethod.getReturnType() == null){
 	//			returnTypeMatches = true;
 	//		}
-	//		else if(event.returned.text == sootMethod.getReturnType().toString()){
+	//		else if(dateEvent.returned.text == sootMethod.getReturnType().toString()){
 	//			returnTypeMatches = true;
 	//		}
 	//		else
 	//		{ 
 	//			String[] splitted = sootMethod.getReturnType().toString().split("\\.");
 	//			
-	//			if(event.returned.text == splitted[splitted.length - 1]){
+	//			if(dateEvent.returned.text == splitted[splitted.length - 1]){
 	//				returnTypeMatches = true;
 	//			}
 	//		}
@@ -490,37 +488,37 @@ public class Matching {
 //		else return false;
 //	}
 //
-//	public static Boolean matches(SootMethod sootMethod, Event event){
+//	public static Boolean matches(SootMethod sootMethod, Event dateEvent){
 //		Boolean classNameMatches = false;
 //		Boolean methodNameMatches = false;
 //		Boolean parameterTypeMatches = false;
 //		Boolean returnTypeMatches = false;
 //
 //		//Declaring Class Name Match
-//		if(event.target.text == "*"
-//				|| event.target.text == sootMethod.getDeclaringClass().getName()){
+//		if(dateEvent.target.text == "*"
+//				|| dateEvent.target.text == sootMethod.getDeclaringClass().getName()){
 //			classNameMatches = true;
 //		}
 //
 //		//Method Name Match
-//		if(event.methodName.text == sootMethod.getName()){
+//		if(dateEvent.methodName.text == sootMethod.getName()){
 //			methodNameMatches = true;
 //		}
 //
 //		//Parameter Type Match
 //
 //		//Return Type Match
-//		if(event.returned == null && sootMethod.getReturnType() == null){
+//		if(dateEvent.returned == null && sootMethod.getReturnType() == null){
 //			returnTypeMatches = true;
 //		}
-//		else if(event.returned.text == sootMethod.getReturnType().toString()){
+//		else if(dateEvent.returned.text == sootMethod.getReturnType().toString()){
 //			returnTypeMatches = true;
 //		}
 //		else
 //		{ 
 //			String[] splitted = sootMethod.getReturnType().toString().split("\\.");
 //
-//			if(event.returned.text == splitted[splitted.length - 1]){
+//			if(dateEvent.returned.text == splitted[splitted.length - 1]){
 //				returnTypeMatches = true;
 //			}
 //		}

@@ -2,28 +2,24 @@ package clarva.analysis.cfg;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 
 import fsm.Event;
 import fsm.FSM;
 import fsm.State;
-import fsm.Transition;
 import soot.Unit;
 
-public class CFG extends FSM<Integer, Shadow>{
+public class CFG <T extends CFGEvent> extends FSM<Integer, T>{
 	
 	public ArrayList<Unit> units;
 	
-	public Map<Unit, State<Integer, Shadow>> labelToState;
+	public Map<Unit, State<Integer, T>> labelToState;
 	
 	public CFG(){
 		super();
 		units = new ArrayList<Unit>();
-		labelToState = new HashMap<Unit, State<Integer, Shadow>>();
+		labelToState = new HashMap<Unit, State<Integer, T>>();
 		this.neverFails = false;
 	}
 	
@@ -31,19 +27,19 @@ public class CFG extends FSM<Integer, Shadow>{
 		super(cfg);
 		
 		units = new ArrayList<Unit>(cfg.units);
-		labelToState = new HashMap<Unit, State<Integer, Shadow>>();
+		labelToState = new HashMap<Unit, State<Integer, T>>();
 		
-		for(State<Integer, Shadow> state : this.states){
+		for(State<Integer, T> state : this.states){
 			labelToState.put(units.get(state.label), state);
 		}
 		
 		this.neverFails = cfg.neverFails;
 	}
 	
-	public State<Integer, Shadow> getOrAddState(Unit u){
+	public State<Integer, T> getOrAddState(Unit u){
 		if(!units.contains(u)){
 			this.units.add(u);
-			State<Integer, Shadow> state = this.getOrAddState(units.size() - 1);
+			State<Integer, T> state = this.getOrAddState(units.size() - 1);
 			labelToState.put(u, state);
 			return state;
 		}
@@ -75,21 +71,21 @@ public class CFG extends FSM<Integer, Shadow>{
 		if(this.internalFSMs.size() == 0){
 			boolean allEpsilon = true;
 			
-			//check if there is an event that is not an epsilon event
-			for(Event<Shadow> letter : this.alphabet){
+			//check if there is an dateEvent that is not an epsilon dateEvent
+			for(Event<T> letter : this.alphabet){
 				if(!letter.label.epsilon){
 					allEpsilon = false;
 				}
 			}
 			
-			//if there is no event that is not an epsilon event
+			//if there is no dateEvent that is not an epsilon dateEvent
 			//then remove all control-flow and return
 			if(allEpsilon){
 				this.states.clear();
 				this.transitions.clear();
 				this.finalStates.clear();
 				this.states.addAll(this.initial);
-				State<Integer,Shadow> onlyState = this.initial.iterator().next();
+				State<Integer,T> onlyState = this.initial.iterator().next();
 				
 				onlyState.incomingTransitions.clear();
 				onlyState.outgoingTransitions.clear();
@@ -101,12 +97,12 @@ public class CFG extends FSM<Integer, Shadow>{
 			}
 		}
 		
-		List<State<Integer, Shadow>> stateList = new ArrayList<State<Integer,Shadow>>(states);
+		List<State<Integer, T>> stateList = new ArrayList<>(states);
 		//for each state
 		for(int i = 0; i < stateList.size(); i ++){
-			State<Integer,Shadow> state = stateList.get(i);
-			List<Event<Shadow>> outgoingEvents = new ArrayList<Event<Shadow>>(state.outgoingTransitions.keySet());
-			List<Event<Shadow>> incomingEvents = new ArrayList<Event<Shadow>>(state.incomingTransitions.keySet());
+			State<Integer,T> state = stateList.get(i);
+			List<Event<T>> outgoingEvents = new ArrayList<>(state.outgoingTransitions.keySet());
+			List<Event<T>> incomingEvents = new ArrayList<>(state.incomingTransitions.keySet());
 			
 			//if the state only has one outgoing transition
 			//and one incoming transition exactly
@@ -117,13 +113,13 @@ public class CFG extends FSM<Integer, Shadow>{
 				List<Integer> incomingStates =
 						new ArrayList<Integer>(state.incomingTransitions.get(incomingEvents.get(0)));
 				
-				//if the outgoing and incoming event are both epsilon events
+				//if the outgoing and incoming dateEvent are both epsilon events
 				if(outgoingEvents.get(0).label.epsilon
 						&& outgoingStates.size() == 1
 						&& incomingEvents.get(0).label.epsilon
 						&& incomingStates.size() == 1){
-					State<Integer, Shadow> outgoingState = state.parent.labelToState.get(outgoingStates.get(0));
-					State<Integer, Shadow> incomingState = state.parent.labelToState.get(incomingStates.get(0));
+					State<Integer, T> outgoingState = state.parent.labelToState.get(outgoingStates.get(0));
+					State<Integer, T> incomingState = state.parent.labelToState.get(incomingStates.get(0));
 					
 					
 					//if the current state has no internal fsm or the outgoing state has no internal fsm
