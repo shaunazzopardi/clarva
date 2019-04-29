@@ -4,10 +4,11 @@ Residual analysis for properties as symbolic automata
 cLARVA (= [clara](https://github.com/Sable/clara) + [LARVA](http://www.cs.um.edu.mt/svrg/Tools/LARVA/)) is a tool aimed to reduce some of the overheads associated with runtime verification.
 
 **Input**: 
-1. *filePath to* DATE property --- an automata specifying the violating traces of the previous program (through AspectJ notions) with transitions over events (method calls) and conditions encoding data state (see [Larva Manual](http://www.cs.um.edu.mt/svrg/Tools/LARVA/LARVA-manual.pdf) for the syntax of DATEs).
-2. *root directory of* compiled Java program (in eclipse, the bin directory); and
-3. *Canonical name* of the Main class of program (of the form \<package-name\>.\<class-name\>);
+1. *language name* of program to be analysed -- currently only *java* is supported;
+2. *filePath to* DATE property --- an automata specifying the violating traces of the previous program (through AspectJ notions) with transitions over events (method calls) and conditions encoding data state (see [Larva Manual](http://www.cs.um.edu.mt/svrg/Tools/LARVA/LARVA-manual.pdf) for the syntax of DATEs).
+3. *root directory of* compiled Java program (in eclipse, the bin directory); and
+4. *Canonical name* of the Main class of program (of the form \<package-name\>.\<class-name\>);
       
-**Output**: A DATE that is a pruned version of Input (1), with which it is enough to monitor Input (2).
+**Output**: A DATE that is a pruned version of Input (2), with which it is enough to monitor Input (3).
 
 See technical report CS-2017-01 in this [series](https://www.um.edu.mt/ict/cs/research/technical_reports) for a detailed version of the theory behind this tool, which will be published in the proceedings of [PrePost 2017](http://staff.um.edu.mt/afra1/prepost17/), in the [EPCTS series](http://eptcs.web.cse.unsw.edu.au/content.cgi?PrePost17), and available on [arXiv](https://arxiv.org/abs/1708.07230).
