@@ -5,7 +5,7 @@ import fsm.helper.Pair;
 
 import java.util.*;
 
-public class FSM<T,S> {
+public class FSM<T, S> {
 
     public Set<State<T, S>> states;
     public Set<State<T, S>> initial;

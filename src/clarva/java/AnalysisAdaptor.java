@@ -1,6 +1,5 @@
 package clarva.java;
 
-import clarva.analysis.MethodsAnalysis;
 import fsm.date.events.DateEvent;
 import fsm.date.events.MethodCall;
 

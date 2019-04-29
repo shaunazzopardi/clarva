@@ -40,6 +40,8 @@ public class DateFSM extends FSM<String, DateLabel>{
 //	public Set<MethodCall> actions;
 	//public Set<Transition> transitions;
 
+	public Map<DateLabel, DateEvent> eventUsedInGuardedCommand;
+
 	public List<String> forEachVariables;
 	public List<String> forEachVariableTypes;
 
@@ -65,6 +67,8 @@ public class DateFSM extends FSM<String, DateLabel>{
 		finalStates = new HashSet<State<String, DateLabel>>();
 		badStates = new HashSet<State<String, DateLabel>>();
 		transitions = new HashSet<Transition<String, DateLabel>>();
+
+		eventUsedInGuardedCommand = new HashMap<>();
 
 		compiler.States larvaStates = property.states;
 		compiler.Transitions larvaTransitions = property.transitions;
@@ -474,8 +478,9 @@ public class DateFSM extends FSM<String, DateLabel>{
 	//to prevent duplicate actions
 	//do we need this?
 	public Event<DateLabel> getOrAddEqualAction(DateLabel action){
+        eventUsedInGuardedCommand.put(action, action.event);
 
-		for(Event<DateLabel> a : alphabet){
+        for(Event<DateLabel> a : alphabet){
 			if(action.equals(a.label)){
 				return a;
 			}

@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import clarva.analysis.cfg.CFGEvent;
-import fsm.date.events.DateEvent;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import fsm.date.events.ChannelEvent;
@@ -19,7 +18,7 @@ import soot.jimple.toolkits.pointer.InstanceKey;
 import soot.jimple.toolkits.pointer.LocalMustAliasAnalysis;
 import soot.jimple.toolkits.pointer.LocalMustNotAliasAnalysis;
 
-public class Shadow extends CFGEvent {
+public class JavaEvent extends CFGEvent {
 
 	public InvokeExpr invocation;
 	public Map<String, InstanceKey> objectBinding = new HashMap<String, InstanceKey>();
@@ -27,26 +26,26 @@ public class Shadow extends CFGEvent {
 	public SootMethod callingMethod;
 	public Map<String, Value> valueBinding;
 
-	public Shadow(){
+	public JavaEvent(){
 		this.epsilon = true;
 	}
 	
-	public Shadow(Stmt unit){
+	public JavaEvent(Stmt unit){
 		epsilon = true;
 		this.unit = unit;
 	}
 	
-	public Shadow(ChannelEvent event){
+	public JavaEvent(ChannelEvent event){
         super(event);
 		this.epsilon = true;
 	}
 	
-	public Shadow(ClockEvent event){
+	public JavaEvent(ClockEvent event){
 	    super(event);
 		this.epsilon = true;
 	}
 	
-	public Shadow(InvokeExpr invocation, Stmt unit, MethodCall event, Map<String, Value> valueBinding){
+	public JavaEvent(InvokeExpr invocation, Stmt unit, MethodCall event, Map<String, Value> valueBinding){
 		this.invocation = invocation;
 		this.dateEvent = event;
 		this.unit = unit;
@@ -82,7 +81,7 @@ public class Shadow extends CFGEvent {
 		}
 	}
 	
-	public boolean mayAlias(Shadow s){
+	public boolean mayAlias(JavaEvent s){
 		//if shadows are in same method
 		if(s.callingMethod.equals(this.callingMethod)){
 			for(String var : this.objectBinding.keySet()){
@@ -103,7 +102,7 @@ public class Shadow extends CFGEvent {
 		return true;
 	}
 	
-	public boolean mustAlias(Shadow s){
+	public boolean mustAlias(JavaEvent s){
 		for(String var : this.objectBinding.keySet()){
 			if(s.objectBinding.keySet().contains(var)){
 				if(s.objectBinding.get(var) == null
@@ -120,7 +119,7 @@ public class Shadow extends CFGEvent {
 	
 	public boolean equals(Object obj){
 		if(obj.getClass().equals(this.getClass())){
-			Shadow other = (Shadow) obj;
+			JavaEvent other = (JavaEvent) obj;
 			if(other.unit != null
 					&& this.unit != null){
 				if(other.unit.equals(this.unit)){

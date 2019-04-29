@@ -1,4 +1,4 @@
-package clarva.analysis;
+package clarva.java;
 
 import soot.MethodOrMethodContext;
 import soot.Scene;
@@ -24,8 +24,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import clarva.java.Shadow;
-import clarva.java.Matching;
 import fsm.Event;
 import fsm.date.DateFSM;
 import fsm.date.DateLabel;
@@ -66,8 +64,8 @@ public class MethodsAnalysis {
 	public Map<InvokeExpr, Unit> invokeExprToUnit; //can a unit be attached with multiple invoke exprs?
 	//public Map<Unit, List<Event<DateLabel>>> unitsToMethodCalls; //can a unit be attached with multiple invoke exprs?
 		
-	public Map<Unit, List<Shadow>> unitShadows;
-	public Set<Shadow> allShadows;
+	public Map<Unit, List<JavaEvent>> unitShadows;
+	public Set<JavaEvent> allShadows;
 	//public Map<MethodOrMethodContext, Map<String, Value>> shadowBindings;
 //	public Map<InvokeExpr, Local> invokeExprLocals;
 //	public Map<Local, String> localCorrespondingToVariable;
@@ -97,8 +95,8 @@ public class MethodsAnalysis {
 		
 		invokeExprInMethod = new HashMap<InvokeExpr,MethodOrMethodContext>();
 		
-		this.unitShadows = new HashMap<Unit, List<Shadow>>();
-		allShadows = new HashSet<Shadow>();
+		this.unitShadows = new HashMap<Unit, List<JavaEvent>>();
+		allShadows = new HashSet<JavaEvent>();
 		
 		this.reachableMethods = reachableMethods(scene);
 //		List<MethodOrMethodContext> toExclude = new ArrayList<MethodOrMethodContext>();
@@ -299,7 +297,7 @@ public class MethodsAnalysis {
 								args = new ArrayList<Value>();
 							}
 							
-							List<Shadow> shadows = new ArrayList<Shadow>();
+							List<JavaEvent> shadows = new ArrayList<JavaEvent>();
 							
 							this.unitShadows.put(edge.srcUnit(), shadows);
 							
@@ -308,7 +306,7 @@ public class MethodsAnalysis {
 								
 								Map<String, Value> forEachVarValue = new HashMap<String, Value>();
 
-								Shadow shadow = new Shadow(expr, sourceStatement, matchingMethodCalls.get(i), forEachVarValue);
+								JavaEvent shadow = new JavaEvent(expr, sourceStatement, matchingMethodCalls.get(i), forEachVarValue);
 							//	shadowBindings.put(shadow, listOfForEachVarsValue);
 								shadows.add(shadow);
 								this.allShadows.add(shadow);

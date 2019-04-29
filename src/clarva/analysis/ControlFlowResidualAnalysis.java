@@ -12,17 +12,14 @@ import java.util.Set;
 import clarva.analysis.cfg.CFG;
 import clarva.analysis.cfg.CFGEvent;
 import clarva.java.JavaMethodIdentifier;
-import clarva.java.Shadow;
+import clarva.java.JavaEvent;
 import clarva.matching.Aliasing;
-import clarva.matching.MethodIdentifier;
 import fsm.Event;
 import fsm.date.DateFSM;
 import fsm.date.SubsetDate;
 import fsm.date.events.DateEvent;
-import fsm.helper.Pair;
-import soot.MethodOrMethodContext;
 
-public class ResidualAnalysis {
+public class ControlFlowResidualAnalysis {
 
 	public static SubsetDate QuickCheckAnalysis(DateFSM property,
                                                 List<DateEvent> allEvents){
@@ -54,17 +51,17 @@ public class ResidualAnalysis {
 	}
 
 //	public static Pair<Map<Shadow, SubsetDate>, List<Pair<String,String>>> ControlFlowAnalysis(Map<Shadow, SubsetDate> residuals, MethodsAnalysis ma, CFGAnalysis cfga){
-	public static <T extends CFGEvent, S extends JavaMethodIdentifier> Map<T, SubsetDate> ControlFlowAnalysis(
+	public static <St, T extends CFGEvent, S extends JavaMethodIdentifier> Map<T, SubsetDate> ControlFlowAnalysis(
 	        Map<T, SubsetDate> residuals,
             Set<T> allShadows,
-            CFGAnalysis<T, S> cfga,
+            CFGAnalysis<St, T, S> cfga,
             Aliasing<T> aliasing){
 
-		Map<S, CFG<T>> wholeProgramCFGApproximations = new HashMap<>();
+		Map<S, CFG<St, T>> wholeProgramCFGApproximations = new HashMap<>();
 		
 		//methodFSM not keeping only reachable methods
 		for(S method : cfga.methodCFG.keySet()){
-			CFG<T> wholeProgramCFG = cfga.methodCFGToWholeProgramCFG(method);
+			CFG<St, T> wholeProgramCFG = cfga.methodCFGToWholeProgramCFG(method);
 			wholeProgramCFGApproximations.put(method, wholeProgramCFG);
 		}
 		
@@ -97,7 +94,7 @@ public class ResidualAnalysis {
 
 		//first iteration should be over compatible shadow sets probably
 		for(T s : allShadowsUpToMustAlias){
-			for(CFG<T> approx : wholeProgramCFGApproximations.values()){
+			for(CFG<St, T> approx : wholeProgramCFGApproximations.values()){
 				SubsetDate oldResidual = residuals.get(s);
 				SubsetDate newResidual = cfga.sufficientResidual(s, approx, oldResidual, aliasing);
 				if(newResidual == null || newResidual.neverFails){
@@ -120,7 +117,7 @@ public class ResidualAnalysis {
 		return residuals;
 	}
 
-	public static SubsetDate residualsUnion(Map<Shadow, SubsetDate> residuals){
+	public static SubsetDate residualsUnion(Map<JavaEvent, SubsetDate> residuals){
 		if(residuals.size() != 0){
 			Iterator<SubsetDate> dateIterator = residuals.values().iterator();
 			
@@ -182,4 +179,5 @@ public class ResidualAnalysis {
 		
 		return residuals;
 	}
+
 }

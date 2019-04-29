@@ -8,62 +8,65 @@ import java.util.Map;
 import fsm.Event;
 import fsm.FSM;
 import fsm.State;
-import soot.Unit;
 
-public class CFG <T extends CFGEvent> extends FSM<Integer, T>{
-	
-	public ArrayList<Unit> units;
-	
-	public Map<Unit, State<Integer, T>> labelToState;
-	
+public class CFG <St, Ev extends CFGEvent> extends FSM<Integer, Ev>{
+
+	public ArrayList<CFGState<St>> statements;
+
+	//why are we doing this?
+    public Map<CFGState<St>, State<Integer, Ev>> labelToState;
+    public Map<State<Integer, Ev>, CFGState<St>> stateToLabel;
+
 	public CFG(){
 		super();
-		units = new ArrayList<Unit>();
-		labelToState = new HashMap<Unit, State<Integer, T>>();
+        statements = new ArrayList<>();
+		labelToState = new HashMap<>();
+        stateToLabel = new HashMap<>();
 		this.neverFails = false;
 	}
-	
+
 	public CFG(CFG cfg){
 		super(cfg);
-		
-		units = new ArrayList<Unit>(cfg.units);
-		labelToState = new HashMap<Unit, State<Integer, T>>();
-		
-		for(State<Integer, T> state : this.states){
-			labelToState.put(units.get(state.label), state);
+
+		statements = new ArrayList<>(cfg.statements);
+		labelToState = new HashMap();
+
+		for(State<Integer, Ev> state : this.states){
+			labelToState.put(statements.get(state.label), state);
 		}
-		
+
 		this.neverFails = cfg.neverFails;
 	}
-	
-	public State<Integer, T> getOrAddState(Unit u){
-		if(!units.contains(u)){
-			this.units.add(u);
-			State<Integer, T> state = this.getOrAddState(units.size() - 1);
+
+	public State<Integer, Ev> getOrAddState(CFGState<St> u){
+		if(!statements.contains(u)){
+			this.statements.add(u);
+			State<Integer, Ev> state = this.getOrAddState(statements.size() - 1);
 			labelToState.put(u, state);
+            stateToLabel.put(state, u);
 			return state;
 		}
 		else{
 			return this.labelToState.get(u);
 		}
 	}
-	
-	public void addInitialState(Unit u){
-		if(!units.contains(u)){
-			this.units.add(u);
+
+	public void addInitialState(CFGState<St> u){
+		if(!statements.contains(u)){
+			this.statements.add(u);
+		}
+
+		this.addInitialState(statements.size() - 1);
+	}
+
+	public void addFinalState(CFGState<St> u){
+		if(!statements.contains(u)){
+			this.statements.add(u);
 		}
 		
-		this.addInitialState(units.size() - 1);
+		this.addFinalState(statements.size() - 1);
 	}
-	
-	public void addFinalState(Unit u){
-		if(!units.contains(u)){
-			this.units.add(u);
-		}
-		
-		this.addFinalState(units.size() - 1);
-	}
-	
+	//only use for control-flow analysis
 	public void reduce(){
 		
 		//if the CFG is not hierarchical
@@ -72,7 +75,7 @@ public class CFG <T extends CFGEvent> extends FSM<Integer, T>{
 			boolean allEpsilon = true;
 			
 			//check if there is an dateEvent that is not an epsilon dateEvent
-			for(Event<T> letter : this.alphabet){
+			for(Event<Ev> letter : this.alphabet){
 				if(!letter.label.epsilon){
 					allEpsilon = false;
 				}
@@ -85,7 +88,7 @@ public class CFG <T extends CFGEvent> extends FSM<Integer, T>{
 				this.transitions.clear();
 				this.finalStates.clear();
 				this.states.addAll(this.initial);
-				State<Integer,T> onlyState = this.initial.iterator().next();
+				State<Integer, Ev> onlyState = this.initial.iterator().next();
 				
 				onlyState.incomingTransitions.clear();
 				onlyState.outgoingTransitions.clear();
@@ -97,12 +100,12 @@ public class CFG <T extends CFGEvent> extends FSM<Integer, T>{
 			}
 		}
 		
-		List<State<Integer, T>> stateList = new ArrayList<>(states);
+		List<State<Integer, Ev>> stateList = new ArrayList<>(states);
 		//for each state
 		for(int i = 0; i < stateList.size(); i ++){
-			State<Integer,T> state = stateList.get(i);
-			List<Event<T>> outgoingEvents = new ArrayList<>(state.outgoingTransitions.keySet());
-			List<Event<T>> incomingEvents = new ArrayList<>(state.incomingTransitions.keySet());
+			State<Integer, Ev> state = stateList.get(i);
+			List<Event<Ev>> outgoingEvents = new ArrayList<>(state.outgoingTransitions.keySet());
+			List<Event<Ev>> incomingEvents = new ArrayList<>(state.incomingTransitions.keySet());
 			
 			//if the state only has one outgoing transition
 			//and one incoming transition exactly
@@ -118,8 +121,8 @@ public class CFG <T extends CFGEvent> extends FSM<Integer, T>{
 						&& outgoingStates.size() == 1
 						&& incomingEvents.get(0).label.epsilon
 						&& incomingStates.size() == 1){
-					State<Integer, T> outgoingState = state.parent.labelToState.get(outgoingStates.get(0));
-					State<Integer, T> incomingState = state.parent.labelToState.get(incomingStates.get(0));
+					State<Integer, Ev> outgoingState = state.parent.labelToState.get(outgoingStates.get(0));
+					State<Integer, Ev> incomingState = state.parent.labelToState.get(incomingStates.get(0));
 					
 					
 					//if the current state has no internal fsm or the outgoing state has no internal fsm

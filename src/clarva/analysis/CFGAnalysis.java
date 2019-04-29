@@ -2,6 +2,7 @@ package clarva.analysis;
 
 import clarva.analysis.cfg.CFG;
 import clarva.analysis.cfg.CFGEvent;
+import clarva.java.JavaMethodIdentifier;
 import clarva.matching.Aliasing;
 import clarva.matching.MethodIdentifier;
 import fsm.Event;
@@ -16,40 +17,46 @@ import fsm.date.events.ClockEvent;
 import fsm.date.events.DateEvent;
 import fsm.date.events.MethodCall;
 import fsm.helper.Pair;
+import soot.Unit;
 
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.function.Predicate;
 
-public abstract class CFGAnalysis <T extends CFGEvent, S extends MethodIdentifier>{
+public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends MethodIdentifier>{
 
-    public Map<S, CFG<T>> methodCFG;
-    public Map<CFG<T>, S> FSMMethod;
-    public Map<S, Boolean> methodNoDirectMethodCall;
-    public Map<S, Boolean> methodNoMatchingMethodCall;
-    public Map<S, Boolean> allStatesNull;
-    public Map<S, Aliasing> methodAliasing;
+    public Map<MethodID, CFG<St, T>> methodCFG;
+    public Map<CFG<St, T>, MethodID> FSMMethod;
+    public Map<MethodID, Boolean> methodNoDirectMethodCall;
+    public Map<MethodID, Boolean> methodNoMatchingMethodCall;
+    public Map<MethodID, Boolean> allStatesNull;
+    public Map<MethodID, Aliasing> methodAliasing;
 
-    public Map<S, List<Event<T>>> eventsPossiblyOccurringBeforeMethod;
-    public Map<S, List<Event<T>>> eventsPossiblyOccurringAfterMethod;
+    public Map<MethodID, List<Event<T>>> eventsPossiblyOccurringBeforeMethod;
+    public Map<MethodID, List<Event<T>>> eventsPossiblyOccurringAfterMethod;
 
-    public Map<S, Set<S>> allMethodsSucceeding;
+    public Map<MethodID, Set<MethodID>> allMethodsSucceeding;
 
-    public Set<S> reachableMethods;
-    public Set<S> mainMethods;
+    public Set<MethodID> reachableMethods;
+    public Set<MethodID> mainMethods;
+
+    public Map<St, Set<MethodID>> statesCallMethods;
+    public Map<MethodID, Set<St>> methodCalledByStates;
+
+    public Map<St, MethodIdentifier> statementCalledBy;
+
 
     public Map<ChannelEvent, T> channelCFGEvents;
     public Map<ClockEvent, T> clockCFGEvents;
     //
-    Set<Event<T>> allEventShadows = new HashSet<>()
-            ;
+    public Set<Event<T>> allEventShadows = new HashSet<>();
     //We use this action to denote tau-actions
     //i.e. actions (points of execution) that
     //are irrelevant to the properties considered
-    Event<T> epsilonAction;
+    public Event<T> epsilonAction;
 
     //    List<Pair<String, String>> ppfs = new ArrayList<Pair<String, String>>();
-    Set<Event<T>> canBeDisabled = new HashSet<Event<T>>(this.allEventShadows);
+    public Set<Event<T>> canBeDisabled = new HashSet<Event<T>>(this.allEventShadows);
 
     public CFGAnalysis() {
         methodCFG = new HashMap<>();
@@ -57,6 +64,9 @@ public abstract class CFGAnalysis <T extends CFGEvent, S extends MethodIdentifie
         methodNoDirectMethodCall = new HashMap<>();
         allStatesNull = new HashMap<>();
         methodAliasing = new HashMap<>();
+
+        statesCallMethods = new HashMap<>();
+        methodCalledByStates = new HashMap<>();
 
         eventsPossiblyOccurringBeforeMethod = new HashMap<>();
         eventsPossiblyOccurringAfterMethod = new HashMap<>();
@@ -71,7 +81,7 @@ public abstract class CFGAnalysis <T extends CFGEvent, S extends MethodIdentifie
 
     public abstract void createChannelAndClockEvents(DateFSM date);
 
-    public Set<Event<T>> relevantShadows(S method, S methodInkovedInThis) {
+    public Set<Event<T>> relevantShadows(MethodID method, MethodID methodInvokedInThis) {
         Set<Event<T>> relevantShadows = new HashSet<Event<T>>();
 
         if (this.methodCFG.get(method) == null) return relevantShadows;
@@ -79,9 +89,9 @@ public abstract class CFGAnalysis <T extends CFGEvent, S extends MethodIdentifie
         relevantShadows.addAll((Collection<? extends Event<T>>) this.methodCFG.get(method).alphabet);
 
         if (this.allMethodsSucceeding.get(method) != null) {
-            for (S otherMethod : this.allMethodsSucceeding.get(method)) {
+            for (MethodID otherMethod : this.allMethodsSucceeding.get(method)) {
                 if (!otherMethod.equals(method)
-                        && !otherMethod.equals(methodInkovedInThis)) {
+                        && !otherMethod.equals(methodInvokedInThis)) {
                     if (this.methodCFG.get(otherMethod) != null)
                         relevantShadows.addAll((Collection<? extends Event<T>>) this.methodCFG.get(otherMethod).alphabet);
                 }
@@ -97,12 +107,16 @@ public abstract class CFGAnalysis <T extends CFGEvent, S extends MethodIdentifie
         return relevantShadows;
     }
 
-    public abstract List<Event<T>> shadowsBefore(S method,
-                                             List<S> methodsAlreadyTraversed);
+//    Map<State, Set<MethodID>> statesPossiblyCalling
+//
+//    public abstract List<State> callingStates(MethodID method);
 
-    public abstract List<Event<T>> shadowsAfter(S method);
+    public abstract List<Event<T>> shadowsBefore(MethodID method,
+                                             List<MethodID> methodsAlreadyTraversed);
 
-    public Pair<List<Event<T>>, List<Event<T>>> shadowsBeforeAndAfter(S method) {
+    public abstract List<Event<T>> shadowsAfter(MethodID method);
+
+    public Pair<List<Event<T>>, List<Event<T>>> shadowsBeforeAndAfter(MethodID method) {
         List<Event<T>> before = new ArrayList<>();
         List<Event<T>> after = new ArrayList<>();
 
@@ -116,11 +130,11 @@ public abstract class CFGAnalysis <T extends CFGEvent, S extends MethodIdentifie
         return beforeAfter;
     }
 
-    public CFG<T> methodCFGToWholeProgramCFG(S method) {
-        CFG<T> methodCFG = this.methodCFG.get(method);
+    public CFG<St, T> methodCFGToWholeProgramCFG(MethodID method) {
+        CFG<St, T> methodCFG = this.methodCFG.get(method);
 
         //if we create new fsm we run out of memory
-        CFG<T> wholeProgramCFG = methodCFG;// new CFG(methodCFG);//new FSM<Unit, Shadow>(methodCFG);
+        CFG<St, T> wholeProgramCFG = methodCFG;// new CFG(methodCFG);//new FSM<Unit, Shadow>(methodCFG);
         boolean changed = false;
         if (!mainMethods.contains(method)) {
 //        if (!Scene.v().getMainMethod().equals(method)) {
@@ -153,7 +167,7 @@ public abstract class CFGAnalysis <T extends CFGEvent, S extends MethodIdentifie
             State<Integer, T> state = stateList.get(i);
             if (state.getInternalFSM() != null) {
                 //add loops for all shadows relevant to internalFSM
-                S methodInvokedHere = this.FSMMethod.get(state.getInternalFSM());
+                MethodID methodInvokedHere = this.FSMMethod.get(state.getInternalFSM());
 
                 //are the two conditions disjuncted below equal? they should be i think
                 if (methodInvokedHere == null) {
@@ -302,7 +316,7 @@ public abstract class CFGAnalysis <T extends CFGEvent, S extends MethodIdentifie
         Set<State<Pair<Integer, Set<String>>, T>> statesTransitionedTo = new HashSet<>();
 
         for (State<Pair<Integer, Set<String>>, T> state : statesToTransitionOn) {
-            CFG stateFSM = cfg;//methodCFG.get(unitCalledBy.get(cfg.units.get(state.label.first)));
+            CFG stateFSM = cfg;//methodCFG.get(statementCalledBy.get(cfg.statements.get(state.label.first)));
             //get the cfgState of the state in the composition we are now considering
             State<Integer, T> cfgState = stateFSM.getOrAddState(state.label.first);
             //get the property states of the state in the composition
@@ -382,7 +396,7 @@ public abstract class CFGAnalysis <T extends CFGEvent, S extends MethodIdentifie
         Set<State<Pair<Integer, Set<String>>, T>> statesTransitionedTo = new HashSet<>();
 
         for (State<Pair<Integer, Set<String>>, T> state : statesToTransitionOn) {
-            CFG stateFSM = cfg;//methodCFG.get(unitCalledBy.get(cfg.units.get(state.label.first)));
+            CFG stateFSM = cfg;//methodCFG.get(statementCalledBy.get(cfg.statements.get(state.label.first)));
             //get the cfgState of the state in the composition we are now considering
             State<Integer, T> cfgState = stateFSM.getOrAddState(state.label.first);
             //get the property states of the state in the composition

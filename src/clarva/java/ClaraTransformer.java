@@ -10,11 +10,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import clarva.analysis.JavaCFGAnalysis;
-import clarva.analysis.MethodsAnalysis;
-import clarva.analysis.ResidualAnalysis;
 
-import clarva.analysis.cfg.CFGEvent;
+import clarva.analysis.ControlFlowResidualAnalysis;
+
 import clarva.matching.Aliasing;
 import compiler.Compiler;
 import compiler.Global;
@@ -28,7 +26,6 @@ import soot.jimple.toolkits.callgraph.CallGraph;
 import fsm.date.DateFSM;
 import fsm.date.ForEach;
 import fsm.date.SubsetDate;
-import fsm.helper.Pair;
 import fsm.main.DateToFSM;
 
 public class ClaraTransformer extends SceneTransformer{
@@ -86,7 +83,7 @@ public class ClaraTransformer extends SceneTransformer{
 		return global;
 	}
 
-	class JavaFlowInsensitiveAliasing implements Aliasing<Shadow> {
+	class JavaFlowInsensitiveAliasing implements Aliasing<JavaEvent> {
 
 		Matching an;
 
@@ -95,28 +92,28 @@ public class ClaraTransformer extends SceneTransformer{
 		}
 
 		@Override
-		public boolean mayAlias(Shadow cfgEvent1, Shadow cfgEvent2) {
+		public boolean mayAlias(JavaEvent cfgEvent1, JavaEvent cfgEvent2) {
 			return an.flowInsensitiveCompatible(cfgEvent1, cfgEvent2);
 		}
 
 		//this method should not be used
 		@Override
-		public boolean mustAlias(Shadow cfgEvent1, Shadow cfgEvent2) {
+		public boolean mustAlias(JavaEvent cfgEvent1, JavaEvent cfgEvent2) {
 			return cfgEvent1.mustAlias(cfgEvent2);
 		}
 	}
 
-	class JavaFlowSensitiveAliasing implements Aliasing<Shadow> {
+	class JavaFlowSensitiveAliasing implements Aliasing<JavaEvent> {
 		public JavaFlowSensitiveAliasing(){
 		}
 
 		@Override
-		public boolean mayAlias(Shadow cfgEvent1, Shadow cfgEvent2) {
+		public boolean mayAlias(JavaEvent cfgEvent1, JavaEvent cfgEvent2) {
 			return cfgEvent1.mayAlias(cfgEvent2);
 		}
 
 		@Override
-		public boolean mustAlias(Shadow cfgEvent1, Shadow cfgEvent2) {
+		public boolean mustAlias(JavaEvent cfgEvent1, JavaEvent cfgEvent2) {
 			return cfgEvent1.mustAlias(cfgEvent2);
 		}
 	}
@@ -125,7 +122,7 @@ public class ClaraTransformer extends SceneTransformer{
 		MethodsAnalysis ma = new MethodsAnalysis(Scene.v(), property.alphabet);
 
 		List<DateEvent> allUsedEvents = AnalysisAdaptor.allEvents(ma);
-		SubsetDate residual = ResidualAnalysis.QuickCheckAnalysis(property, allUsedEvents);
+		SubsetDate residual = ControlFlowResidualAnalysis.QuickCheckAnalysis(property, allUsedEvents);
 		
 		System.out.println("After 1st:");
 		System.out.println(residual);
@@ -139,7 +136,7 @@ public class ClaraTransformer extends SceneTransformer{
 			Matching am = new Matching(ma);
 						
 			//need to reduce shadows up to must-alias here.. using less precise flow-insensitive points-to analysis
-			Map<Shadow,SubsetDate> residuals = ResidualAnalysis.OrphansAnalysis(residual,
+			Map<JavaEvent,SubsetDate> residuals = ControlFlowResidualAnalysis.OrphansAnalysis(residual,
 					ma.allShadows,
 					new JavaFlowInsensitiveAliasing(am));
 //			Map<Shadow,SubsetDate> residuals = ResidualAnalysis.OrphansAnalysis(residual, ma, am);
@@ -149,7 +146,7 @@ public class ClaraTransformer extends SceneTransformer{
 				unionOfResiduals2 = new SubsetDate(residual);
 			}
 			else{
-				unionOfResiduals2 = ResidualAnalysis.residualsUnion(residuals);
+				unionOfResiduals2 = ControlFlowResidualAnalysis.residualsUnion(residuals);
 			}
 			
 			System.out.println("After 2nd:");
@@ -164,12 +161,12 @@ public class ClaraTransformer extends SceneTransformer{
 			else{
 				JavaCFGAnalysis cfga = new JavaCFGAnalysis(ma);
 				
-				residuals = ResidualAnalysis.ControlFlowAnalysis(residuals,
+				residuals = ControlFlowResidualAnalysis.ControlFlowAnalysis(residuals,
                         ma.allShadows,
                         cfga,
                         new JavaFlowSensitiveAliasing());
 				
-				SubsetDate unionOfResiduals = ResidualAnalysis.residualsUnion(residuals);
+				SubsetDate unionOfResiduals = ControlFlowResidualAnalysis.residualsUnion(residuals);
 				
 				System.out.println("After 3rd:");
 				System.out.println(unionOfResiduals);

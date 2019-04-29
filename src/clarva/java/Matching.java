@@ -12,7 +12,6 @@ import java.util.Set;
 
 import org.apache.commons.lang3.ClassUtils;
 
-import clarva.analysis.MethodsAnalysis;
 import fsm.date.events.MethodCall;
 import soot.Context;
 import soot.Local;
@@ -312,7 +311,7 @@ public class Matching {
 	}
 
 	//// Used for Orphans Analysis ////
-	public Boolean flowInsensitiveCompatible(Shadow shadow, Shadow otherShadow){
+	public Boolean flowInsensitiveCompatible(JavaEvent shadow, JavaEvent otherShadow){
 		PointsToAnalysis p2a = Scene.v().getPointsToAnalysis();
 
 //		Unit unit = ma.invokeExprToUnit.get(method);
