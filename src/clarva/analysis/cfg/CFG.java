@@ -16,12 +16,14 @@ public class CFG <St, Ev extends CFGEvent> extends FSM<Integer, Ev>{
 	//why are we doing this?
     public Map<CFGState<St>, State<Integer, Ev>> labelToState;
     public Map<State<Integer, Ev>, CFGState<St>> stateToLabel;
+    public Map<Integer, State<Integer, Ev>> integerToState;
 
 	public CFG(){
 		super();
         statements = new ArrayList<>();
 		labelToState = new HashMap<>();
         stateToLabel = new HashMap<>();
+		integerToState = new HashMap<>();
 		this.neverFails = false;
 	}
 
@@ -44,6 +46,7 @@ public class CFG <St, Ev extends CFGEvent> extends FSM<Integer, Ev>{
 			State<Integer, Ev> state = this.getOrAddState(statements.size() - 1);
 			labelToState.put(u, state);
             stateToLabel.put(state, u);
+			integerToState.put(statements.size() - 1, state);
 			return state;
 		}
 		else{

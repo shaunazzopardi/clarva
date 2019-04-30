@@ -112,9 +112,10 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
                 //				System.out.println(method.method().getSignature());
                 createCFG(JavaMethodIdentifier.get(method));
 
-                if (this.methodCFG.get(method).transitions.size() == 0) {
-                    this.FSMMethod.remove(this.methodCFG.get(method));
-                    this.methodCFG.remove(method);
+                if (this.methodCFG.get(JavaMethodIdentifier.get(method)).transitions.size() == 0) {
+                    this.FSMMethod.remove(this.methodCFG.get(JavaMethodIdentifier.get(method)));
+                    this.methodCFG.remove(JavaMethodIdentifier.get(method));
+                    //TODO this doesn t match methodGraph type
                     this.methodGraph.remove(method);
                 }
             }
@@ -131,7 +132,7 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
 
     }
 
-    //methods contains all method that match events, not methods that call events
+    //methods contains all methods that match events, not methods that call events
     public Set<MethodOrMethodContext> methodFSMsToGenerateFor(Set<MethodOrMethodContext> methods) {
         Set<MethodOrMethodContext> methodsToKeep = new HashSet<MethodOrMethodContext>();
 
@@ -234,9 +235,9 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
                 State<Integer, JavaEvent> currentUnitState = cfg.getOrAddState(new CFGState<Unit>(currentUnit));
 
                 if (ma.unitsContainingMethods.get(currentUnit) != null
-                        && this.methodCFG.keySet().contains(ma.unitsContainingMethods.get(currentUnit))) {
+                        && this.methodCFG.keySet().contains(JavaMethodIdentifier.get(ma.unitsContainingMethods.get(currentUnit)))) {
                     MethodOrMethodContext methodCall = ma.unitsContainingMethods.get(currentUnit);
-                    currentUnitState.setInternalFSM(methodCFG.get(methodCall));
+                    currentUnitState.setInternalFSM(methodCFG.get(JavaMethodIdentifier.get(methodCall)));
                 }
 
                 //If unit is not caught by some action in the property
@@ -256,8 +257,8 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
                     MethodOrMethodContext currentUnitMethod = ma.unitsContainingMethods.get(currentUnit);
                     //If the unit is not atomic (i.e. it has a cfg and fsm)
                     //then set the unit's fsm reference.
-                    if (methodCFG.containsKey(currentUnitMethod)) {
-                        currentUnitState.setInternalFSM(methodCFG.get(currentUnitMethod));
+                    if (methodCFG.containsKey(JavaMethodIdentifier.get(currentUnitMethod))) {
+                        currentUnitState.setInternalFSM(methodCFG.get(JavaMethodIdentifier.get(currentUnitMethod)));
                         methodsCalledByMethod.add(JavaMethodIdentifier.get(currentUnitMethod));
                         //						allStatesNull = false;
                         //						methodsCalledByMethod.add(currentUnitMethod);
@@ -289,12 +290,12 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
 
             }
             for (Unit init : sootCFG.getHeads()) {
-                State<Integer, JavaEvent> initState = cfg.labelToState.get(init);
+                State<Integer, JavaEvent> initState = cfg.labelToState.get(new CFGState(init));
                 cfg.addInitialState(initState);
             }
 
             for (Unit tail : sootCFG.getTails()) {
-                State<Integer, JavaEvent> finalState = cfg.labelToState.get(tail);
+                State<Integer, JavaEvent> finalState = cfg.labelToState.get(new CFGState(tail));
                 cfg.addFinalState(finalState);
             }
 
@@ -496,7 +497,7 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
             if (callingMethod != null && this.methodCFG.keySet().contains(callingMethod)) {
 
                 CFG<Unit, JavaEvent> callingMethodCFG = this.methodCFG.get(callingMethod);
-                State<Integer, JavaEvent> stateInCallingMethodCFG = callingMethodCFG.labelToState.get(invokeExprUnit);
+                State<Integer, JavaEvent> stateInCallingMethodCFG = callingMethodCFG.labelToState.get(new CFGState(invokeExprUnit));
 
                 //the below is needed just in case of loops, so there is no infinite looping
                 List<State<Integer, JavaEvent>> alreadyTraversed = new ArrayList<>();

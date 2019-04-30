@@ -128,6 +128,9 @@ public class FSM<T, S> {
 
     public State<T, S> getOrAddState(State<T, S> state) {
         State<T, S> thisState;
+        if(state == null){
+            System.out.println("");
+        }
         if (!this.states.contains(state)) {
             thisState = getOrAddState(state.label);
         } else {

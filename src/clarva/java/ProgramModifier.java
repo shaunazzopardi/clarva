@@ -10,6 +10,9 @@ import soot.jimple.ThisRef;
 
 public class ProgramModifier{
 
+	//TODO implement this.
+	// Maybe create monitored versions of functions in larva monitored system
+	//	and have any instrumented calls use those functions
 	public boolean createUnmonitoredCopy(SootMethod method){
 		
 		SootClass declaringClass = method.getDeclaringClass();

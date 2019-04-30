@@ -5,6 +5,7 @@ import clarva.analysis.cfg.CFGEvent;
 import clarva.java.JavaMethodIdentifier;
 import clarva.matching.Aliasing;
 import clarva.matching.MethodIdentifier;
+import com.google.common.collect.Sets;
 import fsm.Event;
 import fsm.FSM;
 import fsm.State;
@@ -56,7 +57,7 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
     public Event<T> epsilonAction;
 
     //    List<Pair<String, String>> ppfs = new ArrayList<Pair<String, String>>();
-    public Set<Event<T>> canBeDisabled = new HashSet<Event<T>>(this.allEventShadows);
+    public Set<Event<T>> canBeDisabled = new HashSet<Event<T>>();
 
     public CFGAnalysis() {
         methodCFG = new HashMap<>();
@@ -256,6 +257,69 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
         return residual;
     }
 
+    public Pair<SubsetDate, Set<CFGEvent>> sufficientDATETransitions(T s, CFG wholeProgramCFG, DateFSM property, Aliasing aliasing) {
+        SubsetDate residual;
+
+        Set<Transition<String, DateLabel>> transitionsToKeep = new HashSet<Transition<String, DateLabel>>();
+
+        if (property == null) return new Pair(new SubsetDate(new DateFSM()), new HashSet());
+
+        FSM<Pair<Integer, Set<String>>, T> composition = this.synchronousComposition(wholeProgramCFG, property, s, aliasing);
+        //		System.out.println(s);
+        //		System.out.println(wholeProgramCFG);
+        //		System.out.println(composition);
+
+        Map<String, Set<String>> stateToNewHoareTripleMethods = new HashMap<String, Set<String>>();
+        for (String label : property.stateHoareTripleMethod.keySet()) {
+            stateToNewHoareTripleMethods.put(label, new HashSet<String>(property.stateHoareTripleMethod.get(label)));
+        }
+
+        for (State<Pair<Integer, Set<String>>, T> state : composition.states) {
+            if (state.label.second.size() > 0) {
+                for (String label : state.label.second) {
+                    if (stateToNewHoareTripleMethods.get(label) != null) {
+                        for (Event<T> event : state.outgoingTransitions.keySet()) {
+                            if (!event.label.epsilon) {
+                                String methodName = event.label.dateEvent.name;
+                                String methodClass = ((MethodCall) event.label.dateEvent).objectType;
+
+                                String method = methodClass + "." + methodName;
+                                stateToNewHoareTripleMethods.get(label).add(method);
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+
+        for (Transition<Pair<Integer, Set<String>>, T> transition : composition.transitions) {
+            Set<String> sourcePropertyStates = transition.source.label.second;
+            //Set<String> destinationPropertyStates = transition.source.label.second;
+            DateEvent event = transition.event.label.dateEvent;
+
+            for (String label : sourcePropertyStates) {
+                //this is the difference from the other method
+                if(!(transition.source.label.first.equals(transition.destination.label.first)
+                    && event.getClass().equals(MethodCall.class))) {
+                    State<String, DateLabel> source = property.labelToState.get(label);
+                    for (Event<DateLabel> eventConditionAction : source.outgoingTransitions.keySet()) {
+                        if (eventConditionAction.label.event.equals(event)) {
+                            for (String destinationLabel : source.outgoingTransitions.get(eventConditionAction)) {
+                                State<String, DateLabel> destination = property.labelToState.get(destinationLabel);
+                                transitionsToKeep.add(new Transition<String, DateLabel>(source, destination, eventConditionAction));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        residual = new SubsetDate(property, transitionsToKeep, stateToNewHoareTripleMethods, false);
+
+        return new Pair(residual, composition.alphabet);
+    }
+
     //assuming flat fsm
     public FSM<Pair<Integer, Set<String>>, T> synchronousComposition(CFG cfg,
                                                                             DateFSM date,
@@ -292,7 +356,7 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
             statesToTransitionOn.clear();
 
             for (State<Pair<Integer, Set<String>>, T> state : statesTransitionedTo) {
-                if (!cfg.finalStates.contains(cfg.labelToState.get(state.label.first))
+                if (!cfg.finalStates.contains(cfg.integerToState.get(state.label.first))
                         && !(state.outgoingTransitions.entrySet().size() > 0)//this condition makes sure we iterate over states only one time
                         && state.label.second.size() != 0) {
                     statesToTransitionOn.add(state);
@@ -301,8 +365,7 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
         }
 
         composition.removeUnusedEvents();
-        //events here correspond to transitions in the wholeprogram CFG
-        this.canBeDisabled.removeAll(composition.alphabet);
+
         return composition;
     }
 

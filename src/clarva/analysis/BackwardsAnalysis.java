@@ -123,7 +123,7 @@ public class BackwardsAnalysis {
                     for(Object stmt : callingStatements){
                         MethodIdentifier containingMethod = (MethodIdentifier) analysis.statementCalledBy.get(stmt);
                         CFG containingCFG = (CFG) analysis.methodCFG.get(containingMethod);
-                        State callingState = (State) containingCFG.labelToState.get(stmt);
+                        State callingState = (State) containingCFG.labelToState.get(new CFGState<>(stmt));
                         addStateToDoIfNotInAlreadyDone(newConfig, dateState, callingState);
                     }
 

@@ -165,11 +165,11 @@ public class Matching {
 			classTypeMatches = true;
 		}
 		else{
-			
+			//this will not work if package name is not in class name
+			String className = larvaEvent.objectType.replaceAll("\\+", "");
+
 			try{
-				//this will not work if package name is not in class name
-				String className = larvaEvent.objectType.replaceAll("\\+", "");
-				
+
 				String fullClassName = getFullClassName(className);
 				
 				if(fullClassName.equals("")) fullClassName = className;
@@ -186,6 +186,27 @@ public class Matching {
 				}
 			} catch (ClassNotFoundException e) {
 
+				try {
+					Class sootMethodType = ClassUtils.getClass(sootMethod.getDeclaringClass().getType().getClassName());
+
+					Class superClass = sootMethodType.getSuperclass();
+					do {
+						if(superClass.getName().endsWith(className)){
+							classTypeMatches = true;
+							superClass = Object.class;
+						} else{
+							superClass = sootMethodType.getSuperclass();
+						}
+					} while(!superClass.equals(Object.class));
+
+					if(!classTypeMatches) return false;
+
+				} catch (ClassNotFoundException ex) {
+					//just in case, don t return false
+					classTypeMatches = true;
+				}
+
+
 //			if(!sootMethodTypes.get(i).toString().equals(larvaActionTypes.get(i))
 //					&& !sootMethodTypes.get(i).toString().endsWith(larvaActionTypes.get(i))
 //					&& !larvaActionTypes.get(i).endsWith(sootMethodTypes.get(i).toString())){
@@ -194,7 +215,6 @@ public class Matching {
 				//return false;
 				
 				//just in case, for soundness
-				classTypeMatches = true;
 			}
 		}
 

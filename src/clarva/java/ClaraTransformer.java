@@ -5,20 +5,18 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import clarva.analysis.ControlFlowResidualAnalysis;
 
+import clarva.analysis.cfg.CFGEvent;
 import clarva.matching.Aliasing;
 import compiler.Compiler;
 import compiler.Global;
 import compiler.ParseException;
 import compiler.ParsingString;
 import fsm.date.events.DateEvent;
+import fsm.helper.Pair;
 import soot.Scene;
 import soot.SceneTransformer;
 import soot.SootMethod;
@@ -134,7 +132,8 @@ public class ClaraTransformer extends SceneTransformer{
 		}		
 		else{
 			Matching am = new Matching(ma);
-						
+
+
 			//need to reduce shadows up to must-alias here.. using less precise flow-insensitive points-to analysis
 			Map<JavaEvent,SubsetDate> residuals = ControlFlowResidualAnalysis.OrphansAnalysis(residual,
 					ma.allShadows,
@@ -161,16 +160,17 @@ public class ClaraTransformer extends SceneTransformer{
 			else{
 				JavaCFGAnalysis cfga = new JavaCFGAnalysis(ma);
 				
-				residuals = ControlFlowResidualAnalysis.ControlFlowAnalysis(residuals,
+//				residuals = ControlFlowResidualAnalysis.ControlFlowAnalysis(residuals,
+				Map<JavaEvent, Pair<SubsetDate, Set<CFGEvent>>> residualsAndUsefulEvents = ControlFlowResidualAnalysis.IntraProceduralControlFlowAnalysis(residuals,
                         ma.allShadows,
                         cfga,
                         new JavaFlowSensitiveAliasing());
 				
-				SubsetDate unionOfResiduals = ControlFlowResidualAnalysis.residualsUnion(residuals);
-				
+				Pair<SubsetDate, Set<CFGEvent>> union = ControlFlowResidualAnalysis.residualsAndEventsUnion(residualsAndUsefulEvents);
+
 				System.out.println("After 3rd:");
-				System.out.println(unionOfResiduals);
-				return unionOfResiduals;
+				System.out.println(union.first);
+				return union.first;
 //				actionOnEnd(unionOfResiduals);
 //				
 //				System.out.println();

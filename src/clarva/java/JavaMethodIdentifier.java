@@ -35,6 +35,8 @@ public class JavaMethodIdentifier extends MethodIdentifier {
 
     @Override
     public int hashCode(){
+        if(methodOrMethodContext == null) return -1;
+
         return methodOrMethodContext.hashCode();
     }
 }

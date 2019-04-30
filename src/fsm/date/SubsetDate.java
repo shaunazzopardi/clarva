@@ -129,6 +129,10 @@ public class SubsetDate extends DateFSM{
 	}
 
 	public SubsetDate(DateFSM parent, final Collection<Transition<String,DateLabel>> transitionsToKeep, Map<String,Set<String>> methodsPossibleAtStates){
+		new SubsetDate(parent, transitionsToKeep, methodsPossibleAtStates, true);
+	}
+
+	public SubsetDate(DateFSM parent, final Collection<Transition<String,DateLabel>> transitionsToKeep, Map<String,Set<String>> methodsPossibleAtStates, Boolean keepUnreachable){
 		super(parent);
 		//this.alphabet = alphabetToKeep;
 		this.parent = parent;
@@ -157,7 +161,9 @@ public class SubsetDate extends DateFSM{
 			this.stateHoareTripleMethod.get(label).retainAll(methodsPossibleAtStates.get(label));
 		}
 
-		this.reachabilityReduction();
+		if(keepUnreachable) {
+			this.reachabilityReduction();
+		}
 
 	}
 
@@ -188,7 +194,7 @@ public class SubsetDate extends DateFSM{
 		for(Event<DateLabel> event : state.outgoingTransitions.keySet()){
 			for(String label : state.outgoingTransitions.get(event)){
 				if(this.labelToState.keySet().contains(label)){
-					thisState.addOutgoingTransition(event, states);
+					thisState.addOutgoingTransition(event, this.labelToState.get(label));
 				}
 				else{
 					State<String, DateLabel> thisS = addStateAndContinuation(state.parent.getOrAddState(label));
@@ -200,7 +206,7 @@ public class SubsetDate extends DateFSM{
 		for(Event<DateLabel> event : state.incomingTransitions.keySet()){
 			for(String label : state.incomingTransitions.get(event)){
 				if(this.labelToState.keySet().contains(label)){
-					thisState.addIncomingTransition(event, states);
+					thisState.addIncomingTransition(event, this.labelToState.get(label));
 				}
 				else{
 					State<String, DateLabel> thisS = addStateAndContinuation(state.parent.getOrAddState(label));
@@ -236,7 +242,9 @@ public class SubsetDate extends DateFSM{
 		}
 		
 		for(String label : this.stateHoareTripleMethod.keySet()){
-			this.stateHoareTripleMethod.get(label).addAll(otherDate.stateHoareTripleMethod.get(label));
+			if(otherDate.stateHoareTripleMethod.containsKey(label)){
+				this.stateHoareTripleMethod.get(label).addAll(otherDate.stateHoareTripleMethod.get(label));
+			}
 		}
 		
 		this.neverFails = otherDate.neverFails && this.neverFails;

@@ -9,6 +9,7 @@ import java.util.Set;
 
 import clarva.java.ClaraTransformer;
 import soot.G;
+import soot.JastAddJ.Opt;
 import soot.PackManager;
 import soot.Scene;
 import soot.SootClass;
@@ -25,7 +26,7 @@ public class Main {
 			return;
 		}
 
-		if(args[0] == "java") {
+		if(args[0].equals("java")) {
 			List<String> properties = Arrays.asList(Arrays.copyOfRange(args, 1, args.length - 2));
 //		properties.remove(properties.size()-1);
 
@@ -81,6 +82,10 @@ public class Main {
 	    Options.v().set_allow_phantom_refs(true);
 	    Options.v().keep_line_number();
 	    Options.v().set_main_class(mainClass);
+	    //TODO remove these and generate class files instead; using these for debugging
+	    Options.v().set_output_dir("./soot-out");
+	    Options.v().set_output_format(Options.output_format_dava);
+//	    Options.v().set_output_format(Options.output_format_class);
 
 	    Scene.v().addBasicClass(mainClass, SootClass.BODIES);
 	    Scene.v().loadNecessaryClasses();
