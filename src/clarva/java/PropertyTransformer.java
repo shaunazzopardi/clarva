@@ -111,7 +111,13 @@ public class PropertyTransformer extends SceneTransformer{
 
 		for(DateFSM property : new ArrayList<DateFSM>(global.properties)){
 			global.properties.remove(property);
-			DateFSM residual = computeResidual(property);
+			DateFSM residual1 = computeResidual(property);
+			DateFSM residual = computeResidual(residual1);
+
+			//TEST: testing whether computing residual twice ever gives a different residual
+			if(residual1.transitions.size() != residual.transitions.size()){
+				System.out.print("");
+			}
 
 			if(!residual.neverFails) {
 				satisfied = false;

@@ -11,14 +11,11 @@ import java.util.Set;
 
 import clarva.java.PropertyTransformer;
 import com.google.common.io.Files;
-import soot.G;
+import fsm.helper.Pair;
+import soot.*;
 import soot.JastAddJ.Opt;
-import soot.PackManager;
-import soot.Scene;
-import soot.SootClass;
-import soot.SootMethod;
-import soot.Transform;
 import soot.options.Options;
+import soot.util.Chain;
 
 import javax.swing.text.html.Option;
 
@@ -61,10 +58,10 @@ public class Main {
 
 			G.reset();
 
-			//this generates java files
-			if(!PropertyTransformer.allSatisfied) {
-				soot.Main.main(new String[]{"-output-dir", rootOutputDir, "-cp", outputDir, "-allow-phantom-refs", "-f", "dava", "-process-dir", outputDir});
-			}
+//			//this generates java files
+//			if(!PropertyTransformer.allSatisfied) {
+//				soot.Main.main(new String[]{"-output-dir", rootOutputDir, "-cp", outputDir, "-allow-phantom-refs", "-f", "dava", "-process-dir", outputDir});
+//			}
 
 			System.exit(0);
 		}
@@ -135,15 +132,47 @@ public class Main {
 	    PackManager.v().getPack("wjtp")
 	        .add(new Transform("wjtp.PropertyTransformer", new PropertyTransformer()));
 
-//	    soot.Main.main(new String[]{});
-
 	    PackManager.v().getPack("cg").apply();
 	    PackManager.v().getPack("wjtp").apply();
 
+//		  PhaseOptions.v().setPhaseOption("bb", "enabled");
+//		  PhaseOptions.v().setPhaseOption("db", "enabled");
+//
+//		  soot.Main.main(Options.v().dump_body().toArray(new String[]{}));
 
 	    if(!PropertyTransformer.allSatisfied) {
 			try {
+
+//				PackManager.v().getPack("bb").apply();
+//				PackManager.v().getPack("db").apply();
 				PackManager.v().writeOutput();
+
+//				Options.v().set_output_format(output_format_class);
+//				Options.v().set_output_dir(rootOutputDir);
+//
+//				Set<Pair<SootClass, SootMethod>> toRemove = new HashSet<>();
+//
+//				Chain<SootClass> classes = Scene.v().getApplicationClasses();
+//				for(SootClass sootClass : classes) {
+//					for (SootMethod method : sootClass.getMethods()) {
+//						if (!method.hasActiveBody()) {
+//							try {
+//								method.retrieveActiveBody();
+//							}catch(Exception e){
+//								toRemove.add(new Pair<>(sootClass, method));
+//							}
+//						}
+//					}
+//				}
+//
+//				for(Pair<SootClass, SootMethod> pair : toRemove){
+//					pair.first.removeMethod(pair.second);
+//					if(pair.first.getMethods().size() == 0){
+//						Scene.v().getApplicationClasses().remove(pair.first);
+//					}
+//				}
+//				PackManager.v().writeOutput();
+
 			} catch (Exception e) {
 				e.printStackTrace();
 			}

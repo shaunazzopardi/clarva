@@ -756,7 +756,9 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
         }
     }
 
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//////The methods below were intended ot be used in conjunction with Starvoors
+//////////////////////////////////////////////////////////////////////////////////////////////////////
     public boolean recursive(JavaMethodIdentifier method) {
         return this.allMethodsSucceeding.get(method).contains(method);
     }
@@ -780,15 +782,18 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
         }
     }
 
-    public boolean inLoop(JavaMethodIdentifier method, Stmt s) {
-        LoopFinder loopFinder = new LoopFinder();
-        loopFinder.transform(method.methodOrMethodContext.method().getActiveBody());
-        for (Loop loop : loopFinder.loops()) {
-            if (loop.getLoopStatements().contains(s)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
+//    public boolean inLoop(JavaMethodIdentifier method, Stmt s) {
+//        LoopFinder loopFinder = new LoopFinder();
+//        loopFinder.transform(method.methodOrMethodContext.method().getActiveBody());
+//        for (Loop loop : loopFinder.loops()) {
+//            if (loop.getLoopStatements().contains(s)) {
+//                return true;
+//            }
+//        }
+//
+//        return false;
+//    }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 }

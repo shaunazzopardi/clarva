@@ -1,8 +1,6 @@
 package clarva.java;
 
 import clarva.matching.MethodIdentifier;
-import org.jboss.util.platform.Java;
-import soot.BodyTransformer;
 import soot.MethodOrMethodContext;
 
 import java.util.HashMap;
