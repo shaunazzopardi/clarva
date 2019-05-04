@@ -1,13 +1,12 @@
 package clarva.analysis.cfg;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import fsm.Event;
 import fsm.FSM;
 import fsm.State;
+import fsm.Transition;
+import javafx.scene.effect.Shadow;
 
 public class CFG <St, Ev extends CFGEvent> extends FSM<Integer, Ev>{
 
@@ -134,7 +133,7 @@ public class CFG <St, Ev extends CFGEvent> extends FSM<Integer, Ev>{
 					//     (ii) add the current states internal fsm to the outgoing states internal fsms
 					//	   (iii) add the
 					if((state.getInternalFSM() == null
-							|| outgoingState.getInternalFSM() == null)){
+							&& outgoingState.getInternalFSM() == null)){
 						stateList.remove(state);
 						
 						if(incomingState.outgoingTransitions.get(incomingEvents.get(0)).size() == 1)
@@ -155,7 +154,8 @@ public class CFG <St, Ev extends CFGEvent> extends FSM<Integer, Ev>{
 						
 						this.addTransition(incomingState, outgoingEvents.get(0), outgoingState);
 						
-						if(state.getInternalFSM() != null) outgoingState.setInternalFSM(state.getInternalFSM());
+//						if(state.getInternalFSM() != null) outgoingState.setInternalFSM(state.getInternalFSM());
+
 //						outgoingState.addOutgoingTransitions(state.outgoingTransitions);
 //						outgoingState.addOutgoingTransitions(state.incomingTransitions);
 						i--;
@@ -192,26 +192,26 @@ public class CFG <St, Ev extends CFGEvent> extends FSM<Integer, Ev>{
 	
 		this.states.retainAll(stateList);
 
-//		Set<Transition<Integer,Shadow>> newTransitions = new HashSet<Transition<Integer,Shadow>>(this.transitions);
-//		for(int i = 0; i < stateList.size(); i++){
-//			State<Integer,Shadow> state = stateList.get(i);
-//			if(this.states.contains(state)){
-//				for(Entry<Event<Shadow>,Set<State<Integer,Shadow>>> entry : state.outgoingTransitions.entrySet()){
-//					List<State<Integer,Shadow>> outgoingStates = new ArrayList<State<Integer,Shadow>>(entry.getValue());
-//					for(int j = 0; j < outgoingStates.size(); j++){
-//						State<Integer,Shadow> outgoingState = outgoingStates.get(j);
-//						if(this.states.contains(outgoingState)){
-//							newTransitions.add(new Transition<Integer, Shadow>(state, outgoingState, entry.getKey()));
-//						}
-//						else{
-//							state.removeOutgoingTransition(entry.getKey(), outgoingState);
-//							outgoingState.removeOutgoingTransition(entry.getKey(), state);
-//						}
-//					}
-//				}
-//			}
-//		}
-//		
-//		this.transitions = newTransitions;
+		Set<Transition<Integer,Ev>> newTransitions = new HashSet<>();
+		for(int i = 0; i < stateList.size(); i++){
+			State<Integer,Ev> state = stateList.get(i);
+			if(this.states.contains(state)){
+				for(Map.Entry<Event<Ev>,Set<Integer>> entry : state.outgoingTransitions.entrySet()){
+					Set<Integer> outgoingStates = new HashSet<Integer>(entry.getValue());
+					for(Integer outgoingStateLabel : outgoingStates){
+						State<Integer,Ev> outgoingState = getOrAddState(outgoingStateLabel);
+						if(this.states.contains(outgoingState)){
+							newTransitions.add(new Transition<>(state, outgoingState, entry.getKey()));
+						}
+						else{
+							state.removeOutgoingTransition(entry.getKey(), outgoingState);
+							outgoingState.removeOutgoingTransition(entry.getKey(), state);
+						}
+					}
+				}
+			}
+		}
+
+		this.transitions = newTransitions;
 	}
 }

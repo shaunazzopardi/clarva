@@ -117,7 +117,7 @@ public class BackwardsAnalysis {
                     //for each such statement get it s state in its CFG
                     //and tag it to the current DEA state
 
-                    MethodIdentifier method = (MethodIdentifier) analysis.FSMMethod.get(cfgState.parent);
+                    MethodIdentifier method = (MethodIdentifier) analysis.CFGMethod.get(cfgState.parent);
                     Set callingStatements = (Set) analysis.methodCalledByStates.get(method);
 
                     for(Object stmt : callingStatements){

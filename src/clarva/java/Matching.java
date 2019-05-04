@@ -13,14 +13,7 @@ import java.util.Set;
 import org.apache.commons.lang3.ClassUtils;
 
 import fsm.date.events.MethodCall;
-import soot.Context;
-import soot.Local;
-import soot.MethodOrMethodContext;
-import soot.PointsToAnalysis;
-import soot.PointsToSet;
-import soot.Scene;
-import soot.SootMethod;
-import soot.Type;
+import soot.*;
 import soot.jimple.InvokeExpr;
 import soot.jimple.spark.sets.EmptyPointsToSet;
 
@@ -130,7 +123,65 @@ public class Matching {
 	    }
 	    
 	}
-	
+
+	public static Boolean typeMatches(String larvaType, SootClass sootClass){
+		boolean classTypeMatches = true;
+
+		if(larvaType.equals("*")
+				|| larvaType.replaceAll("\\+", "").equals(sootClass.getName())
+				|| sootClass.getName().endsWith("." + larvaType.replaceAll("\\+", ""))
+				|| sootClass.getType().getClassName().equals("Object")){
+			classTypeMatches = true;
+		}
+		else{
+			//this will not work if package name is not in class name
+			String className = larvaType.replaceAll("\\+", "");
+
+			try{
+
+				String fullClassName = getFullClassName(className);
+
+				if(fullClassName.equals("")) fullClassName = className;
+				Class larvaEventType = ClassUtils.getClass(fullClassName);
+				Class sootMethodType = ClassUtils.getClass(sootClass.getType().getClassName());
+
+
+				//if the larvaEventType is a super class of sootMethodType
+				if(!larvaEventType.isAssignableFrom(sootMethodType)){
+					return false;
+				}
+				else{
+					classTypeMatches = true;
+				}
+			} catch (ClassNotFoundException e) {
+
+				try {
+					Class sootMethodType = ClassUtils.getClass(sootClass.getType().getClassName());
+
+					Class superClass = sootMethodType.getSuperclass();
+					do {
+						if(superClass.getName().endsWith(className)){
+							classTypeMatches = true;
+							superClass = Object.class;
+						} else{
+							superClass = sootMethodType.getSuperclass();
+						}
+					} while(!superClass.equals(Object.class));
+
+					if(!classTypeMatches) return false;
+
+				} catch (ClassNotFoundException ex) {
+					//just in case, don t return false
+					classTypeMatches = true;
+				}
+
+			}
+		}
+
+		return classTypeMatches;
+	}
+
+
 	public static Boolean matchesMethod(MethodOrMethodContext method, MethodCall methodEvent){
 		
 		MethodCall larvaEvent = methodEvent;
@@ -156,90 +207,44 @@ public class Matching {
 		}
 		else return false;
 
-		//Declaring Class Name Match
-		//what about packages? are we catching them?
-		if(larvaEvent.objectType.equals("*")
-				|| larvaEvent.objectType.replaceAll("\\+", "").equals(sootMethod.getDeclaringClass().getName())
-				|| sootMethod.getDeclaringClass().getName().endsWith("." + larvaEvent.objectType.replaceAll("\\+", ""))
-				|| sootMethod.getDeclaringClass().getType().getClassName().equals("Object")){
-			classTypeMatches = true;
-		}
-		else{
-			//this will not work if package name is not in class name
-			String className = larvaEvent.objectType.replaceAll("\\+", "");
-
-			try{
-
-				String fullClassName = getFullClassName(className);
-				
-				if(fullClassName.equals("")) fullClassName = className;
-				Class larvaEventType = ClassUtils.getClass(fullClassName);
-				Class sootMethodType = ClassUtils.getClass(sootMethod.getDeclaringClass().getType().getClassName());
-		
-		
-				//if the larvaEventType is a super class of sootMethodType
-				if(!larvaEventType.isAssignableFrom(sootMethodType)){
-					return false;
-				}
-				else{
-					classTypeMatches = true;
-				}
-			} catch (ClassNotFoundException e) {
-
-				try {
-					Class sootMethodType = ClassUtils.getClass(sootMethod.getDeclaringClass().getType().getClassName());
-
-					Class superClass = sootMethodType.getSuperclass();
-					do {
-						if(superClass.getName().endsWith(className)){
-							classTypeMatches = true;
-							superClass = Object.class;
-						} else{
-							superClass = sootMethodType.getSuperclass();
-						}
-					} while(!superClass.equals(Object.class));
-
-					if(!classTypeMatches) return false;
-
-				} catch (ClassNotFoundException ex) {
-					//just in case, don t return false
-					classTypeMatches = true;
-				}
-
-
-//			if(!sootMethodTypes.get(i).toString().equals(larvaActionTypes.get(i))
-//					&& !sootMethodTypes.get(i).toString().endsWith(larvaActionTypes.get(i))
-//					&& !larvaActionTypes.get(i).endsWith(sootMethodTypes.get(i).toString())){
-//				return false;
-//			}
-				//return false;
-				
-				//just in case, for soundness
-			}
-		}
+		classTypeMatches = typeMatches(larvaEvent.objectType, sootMethod.getDeclaringClass());
 
 		//Parameter Type Match
 		List<Type> sootMethodTypes = sootMethod.getParameterTypes();
 		ArrayList<String> larvaActionTypes = larvaEvent.argTypes;
 
-		if(sootMethodTypes.size() == larvaActionTypes.size()){
-			
-			
-			for(int i = 0; i < larvaActionTypes.size(); i++){
-				
+		if(sootMethodTypes.size() == larvaActionTypes.size()
+			|| larvaActionTypes.contains("*")){
+
+			for(int j = 0, i = 0; i < larvaActionTypes.size(); i++, j++){
+
+				//this takes care of when * is used as a larva action type to match multiple events
+
+				if(larvaActionTypes.size() != sootMethodTypes.size()
+					&& larvaActionTypes.get(i).equals("*")){
+
+					//Assumption: here we are assuming * is only used once
+					assert !larvaActionTypes.subList(i + 1, larvaActionTypes.size()).contains("*");
+
+					j = (sootMethodTypes.size()) - ((larvaActionTypes.size()) - i);
+					continue;
+				}
+
 				Class<?> sootMethodType;
 				Class<?> larvaActionType;
 				try {
-					
+
 					String fullClassName = getFullClassName(larvaActionTypes.get(i).toString());
-					sootMethodType = ClassUtils.getClass(sootMethodTypes.get(i).toString());
+
+					sootMethodType = ClassUtils.getClass(sootMethodTypes.get(j).toString());
 					larvaActionType = ClassUtils.getClass(fullClassName);
-				
-				//or other way round?
-				if(!larvaActionType.isAssignableFrom(sootMethodType)
-						&& !ClassUtils.isAssignable(larvaActionType, sootMethodType)){
-					return false;
-				}
+
+					//or other way round?
+					if(!larvaActionType.isAssignableFrom(sootMethodType)
+							&& !ClassUtils.isAssignable(larvaActionType, sootMethodType)){
+						return false;
+					}
+
 				} catch (ClassNotFoundException e) {
 					// TODO Auto-generated catch block
 				//	e.printStackTrace();
@@ -254,9 +259,10 @@ public class Matching {
 					}
 				}
 
-				
+
 				//else taghtiex kaz
 			}
+
 			argTypeMatches = true;
 
 //				//To account for subtypes
@@ -311,7 +317,7 @@ public class Matching {
 
 		//Return Type Match
 		if(larvaEvent.returnType.equals("*")
-				|| larvaEvent.returnType.equals(sootMethod.getReturnType().toString())){
+				|| larvaEvent.returnType.toLowerCase().equals(sootMethod.getReturnType().toString().toLowerCase())){
 			returnTypeMatches = true;
 		}
 		else if(larvaEvent.name.equals("new") && sootMethod.isConstructor()){

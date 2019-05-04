@@ -45,7 +45,7 @@ public class DateFSM extends FSM<String, DateLabel>{
 	public List<String> forEachVariables;
 	public List<String> forEachVariableTypes;
 
-	public static Map<Trigger, DateEvent> triggerToMethodCall = new HashMap<Trigger, DateEvent>();
+	public static Map<Trigger, DateEvent> triggerToDateEvent = new HashMap<Trigger, DateEvent>();
 
 	public DateFSM(Property property, List<compiler.Variable> variables)
 	{
@@ -193,7 +193,7 @@ public class DateFSM extends FSM<String, DateLabel>{
 										event = new MethodCall((compiler.Event) trigg, events, this.forEachVariables, this.forEachVariableTypes, trigger.whereClause);
 									}
 
-									triggerToMethodCall.put(trigg, event);
+									triggerToDateEvent.put(trigg, event);
 									DateLabel dateLabel = new DateLabel(event, condition, action);
 
 									this.addTransition(source, getOrAddEqualAction(dateLabel), destination);
@@ -236,7 +236,7 @@ public class DateFSM extends FSM<String, DateLabel>{
 								event = new MethodCall((compiler.Event) next, this.forEachVariables, this.forEachVariableTypes, trigger.whereClause);
 							}
 
-							triggerToMethodCall.put(next, event);
+							triggerToDateEvent.put(next, event);
 
 							DateLabel dateLabel = new DateLabel(event, condition, action);
 
@@ -281,7 +281,7 @@ public class DateFSM extends FSM<String, DateLabel>{
 					}
 
 				//	fsm.date.events.MethodCall methodCall = new MethodCall((compiler.Event) trigger, this.forEachVariables, this.forEachVariableTypes, trigger.whereClause);
-					triggerToMethodCall.put(trigger, event);
+					triggerToDateEvent.put(trigger, event);
 
 					DateLabel dateLabel = new DateLabel(event, condition, action);
 
@@ -374,6 +374,11 @@ public class DateFSM extends FSM<String, DateLabel>{
 		}
 
 		this.neverFails = fsm.neverFails;
+	}
+
+	public DateFSM(String name){
+		this();
+		this.propertyName = name;
 	}
 
 	public DateFSM(){
@@ -561,5 +566,5 @@ public class DateFSM extends FSM<String, DateLabel>{
 		
 		return representation;
 	}
-	
+
 }

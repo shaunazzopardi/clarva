@@ -58,7 +58,7 @@ public class Transition<T,S> {
 	}
 	
 	public String toString(){
-		return source + " --" + event + "--> " + destination;
+		return "\"" + source + "\"" + " -> \"" + destination + "\" [label=\"" + event + "\"]";
 	}
 	
 	public boolean equals(Object obj){

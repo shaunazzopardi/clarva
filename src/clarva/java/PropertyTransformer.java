@@ -1,32 +1,36 @@
 package clarva.java;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
 import java.util.*;
 
 import clarva.analysis.ControlFlowResidualAnalysis;
 
 import clarva.analysis.cfg.CFGEvent;
 import clarva.matching.Aliasing;
+import com.google.common.io.Files;
 import compiler.Compiler;
 import compiler.Global;
 import compiler.ParseException;
 import compiler.ParsingString;
+import fsm.Event;
 import fsm.date.events.DateEvent;
 import fsm.helper.Pair;
-import soot.Scene;
-import soot.SceneTransformer;
-import soot.SootMethod;
+import soot.*;
+import soot.jimple.*;
+import soot.jimple.internal.AbstractInstanceInvokeExpr;
+import soot.jimple.internal.AbstractInvokeExpr;
+import soot.jimple.internal.AbstractStaticInvokeExpr;
+import soot.jimple.internal.AbstractVirtualInvokeExpr;
 import soot.jimple.toolkits.callgraph.CallGraph;
 import fsm.date.DateFSM;
 import fsm.date.ForEach;
 import fsm.date.SubsetDate;
 import fsm.main.DateToFSM;
+import soot.options.Options;
+import soot.util.Chain;
+import soot.util.JasminOutputStream;
 
-public class ClaraTransformer extends SceneTransformer{
+public class PropertyTransformer extends SceneTransformer{
 
 	//public static String larvaProperty = "../DateToFSM/lrv/bank.lrv";
 	
@@ -39,11 +43,14 @@ public class ClaraTransformer extends SceneTransformer{
 	public static CallGraph cg;
 	
 	public static List<SootMethod> reachableMethods;
-	
+
+	public static boolean allSatisfied = true;
+
 //	public static InfoflowCFG icfg;
 //	public static AliasFinder af;
 
-	
+    public static Map<DateFSM, Set<Event<JavaEvent>>> eventsToMonitorFor = new HashMap<>();
+
 	@Override
 	protected void internalTransform(String phaseName, Map<String, String> options) {
 
@@ -52,33 +59,85 @@ public class ClaraTransformer extends SceneTransformer{
 		//System.out.println(dateFSMHierarchy);
 
 		for(fsm.date.Global global : dateFSMHierarchy){
-			residualGlobals.add(computeGlobalResidual(global));
-			
-			try{
-			    PrintWriter writer = new PrintWriter(dateFSMHierarchy.indexOf(global) + "residual.lrv", "UTF-8");
-			    writer.println(residualGlobals.get(residualGlobals.size()-1));
-			    writer.close();
-			} catch (IOException e) {
-			   // do something
+			Pair<fsm.date.Global, Boolean> globalBooleanPair = computeGlobalResidual(global);
+			fsm.date.Global globalResidual = globalBooleanPair.first;
+			residualGlobals.add(globalResidual);
+
+			if(!globalBooleanPair.second) {
+				allSatisfied = false;
+				try {
+					PrintWriter writer = new PrintWriter(clarva.Main.rootOutputDir + "/" + dateFSMHierarchy.indexOf(global) + "residual.lrv", "UTF-8");
+					writer.println(residualGlobals.get(residualGlobals.size() - 1).toStringWithEventInterface());
+					writer.close();
+				} catch (IOException e) {
+					// do something
+				}
 			}
-			
 		//	System.out.println(global);
 		}
-		
+
+		for(Set<Event<JavaEvent>> events : eventsToMonitorFor.values()) {
+			for (Event<JavaEvent> event : events) {
+				event.label.callingMethod.retrieveActiveBody();
+
+			}
+		}
+
+		Set<Pair<SootClass, SootMethod>> toRemove = new HashSet<>();
+
+		Chain<SootClass> classes = Scene.v().getApplicationClasses();
+		for(SootClass sootClass : classes) {
+			for (SootMethod method : sootClass.getMethods()) {
+				if (!method.hasActiveBody()) {
+				    try {
+                        method.retrieveActiveBody();
+                    }catch(Exception e){
+				        toRemove.add(new Pair<>(sootClass, method));
+				    }
+				}
+			}
+		}
+
+		for(Pair<SootClass, SootMethod> pair : toRemove){
+			pair.first.removeMethod(pair.second);
+			if(pair.first.getMethods().size() == 0){
+				Scene.v().getApplicationClasses().remove(pair.first);
+			}
+		}
 	}
 	
-	public fsm.date.Global computeGlobalResidual(fsm.date.Global global){
+	public Pair<fsm.date.Global,Boolean> computeGlobalResidual(fsm.date.Global global){
+		boolean satisfied = true;
+
 		for(DateFSM property : new ArrayList<DateFSM>(global.properties)){
 			global.properties.remove(property);
-			global.properties.add(computeResidual(property));
+			DateFSM residual = computeResidual(property);
+
+			if(!residual.neverFails) {
+				satisfied = false;
+				global.properties.add(residual);
+
+				try {
+					ProgramModifier.instrument();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			} else{
+				System.out.println(residual.propertyName + " is always satisfied!");
+			}
 		}
 		
 		for(ForEach foreach : new HashSet<ForEach>(global.forEaches)){
 			global.forEaches.remove(foreach);
-			global.forEaches.add((ForEach) computeGlobalResidual(foreach));
+			Pair<fsm.date.Global, Boolean> globalBooleanPair = computeGlobalResidual(foreach);
+			ForEach forEach = (ForEach) globalBooleanPair.first;
+			satisfied &= globalBooleanPair.second;
+			if(!globalBooleanPair.second) {
+				global.forEaches.add(forEach);
+			}
 		}
 		
-		return global;
+		return new Pair<>(global, satisfied);
 	}
 
 	class JavaFlowInsensitiveAliasing implements Aliasing<JavaEvent> {
@@ -122,17 +181,17 @@ public class ClaraTransformer extends SceneTransformer{
 		List<DateEvent> allUsedEvents = AnalysisAdaptor.allEvents(ma);
 		SubsetDate residual = ControlFlowResidualAnalysis.QuickCheckAnalysis(property, allUsedEvents);
 		
-		System.out.println("After 1st:");
-		System.out.println(residual);
-		
+
 		if(residual.neverFails){
 			return residual;
 //			actionOnEnd(residual); 
 //			return;
 		}		
 		else{
-			Matching am = new Matching(ma);
+//			System.out.println("After 1st:");
+//			System.out.println(residual);
 
+			Matching am = new Matching(ma);
 
 			//need to reduce shadows up to must-alias here.. using less precise flow-insensitive points-to analysis
 			Map<JavaEvent,SubsetDate> residuals = ControlFlowResidualAnalysis.OrphansAnalysis(residual,
@@ -140,36 +199,38 @@ public class ClaraTransformer extends SceneTransformer{
 					new JavaFlowInsensitiveAliasing(am));
 //			Map<Shadow,SubsetDate> residuals = ResidualAnalysis.OrphansAnalysis(residual, ma, am);
 
-			SubsetDate unionOfResiduals2;
-			if(residuals.size() == 0){
-				unionOfResiduals2 = new SubsetDate(residual);
-			}
-			else{
-				unionOfResiduals2 = ControlFlowResidualAnalysis.residualsUnion(residuals);
-			}
-			
-			System.out.println("After 2nd:");
-			System.out.println(unionOfResiduals2);
 
-			
 			if(residuals.values().size() == 0){
-				return new DateFSM();
+
+				return new DateFSM(property.propertyName);
 //				actionOnEnd(new DateFSM()); 
 //				return;
 			}
 			else{
+				SubsetDate unionOfResiduals2;
+
+				unionOfResiduals2 = ControlFlowResidualAnalysis.residualsUnion(residuals);
+
+//				System.out.println("After 2nd:");
+//				System.out.println(unionOfResiduals2);
+
 				JavaCFGAnalysis cfga = new JavaCFGAnalysis(ma);
 				
 //				residuals = ControlFlowResidualAnalysis.ControlFlowAnalysis(residuals,
-				Map<JavaEvent, Pair<SubsetDate, Set<CFGEvent>>> residualsAndUsefulEvents = ControlFlowResidualAnalysis.IntraProceduralControlFlowAnalysis(residuals,
+				Map<JavaEvent, Pair<SubsetDate, Set<Event<JavaEvent>>>> residualsAndUsefulEvents = ControlFlowResidualAnalysis.IntraProceduralControlFlowAnalysis(residuals,
                         ma.allShadows,
                         cfga,
                         new JavaFlowSensitiveAliasing());
-				
-				Pair<SubsetDate, Set<CFGEvent>> union = ControlFlowResidualAnalysis.residualsAndEventsUnion(residualsAndUsefulEvents);
 
-				System.out.println("After 3rd:");
-				System.out.println(union.first);
+				Pair<SubsetDate, Set<Event<JavaEvent>>> union = ControlFlowResidualAnalysis.residualsAndEventsUnionWithoutReductions(residualsAndUsefulEvents);
+
+                eventsToMonitorFor.put(property, union.second);
+
+                if(!union.first.neverFails) {
+//					System.out.println("After 3rd:");
+//					System.out.println(union.first);
+				}
+
 				return union.first;
 //				actionOnEnd(unionOfResiduals);
 //				

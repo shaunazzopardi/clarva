@@ -1,12 +1,10 @@
 package clarva.java;
 
-import soot.MethodOrMethodContext;
-import soot.Scene;
-import soot.Unit;
-import soot.Value;
-import soot.jimple.InstanceInvokeExpr;
-import soot.jimple.InvokeExpr;
-import soot.jimple.Stmt;
+import polyglot.ast.Assign;
+import soot.*;
+import soot.jimple.*;
+import soot.jimple.internal.AbstractInstanceInvokeExpr;
+import soot.jimple.internal.AbstractVirtualInvokeExpr;
 import soot.jimple.toolkits.callgraph.CallGraph;
 import soot.jimple.toolkits.callgraph.Edge;
 import soot.jimple.toolkits.callgraph.ReachableMethods;
@@ -163,11 +161,17 @@ public class MethodsAnalysis {
 		for(Event<DateLabel> actionMethodCall : allEvents){
 			if(actionMethodCall.label.event instanceof MethodCall){
 				MethodCall event = (MethodCall) actionMethodCall.label.event;
-				
+
 				List<MethodOrMethodContext> methods = new ArrayList<MethodOrMethodContext>();
 				
-				for(MethodOrMethodContext method : reachableMethods){
-//					if(method.method().getName().equals("add")){
+				for(int i = 0; i < reachableMethods.size(); i++){
+					if(reachableMethods.get(i).method().getName().contains("payToCompanyFromCard")){
+						System.out.print("");
+					}
+					MethodOrMethodContext method = reachableMethods.get(i);
+
+					String name = method.method().getName();
+//					if(name.contains("addLeaf")){
 //						System.out.println("Here");
 //					}
 //					if(method.toString().contains("PurseList")
@@ -178,13 +182,44 @@ public class MethodsAnalysis {
 					if(Matching.matchesMethod(method.method(), event)){
 						methods.add(method);
 						
-						if(sootMethodToDateEvents.containsKey(method)){
+						if(sootMethodToDateEvents.containsKey(method)
+							&& !sootMethodToDateEvents.get(method).contains(event)){
 							sootMethodToDateEvents.get(method).add(event);
 						}
-						else{
+						else if(!sootMethodToDateEvents.containsKey(method)){
 							List<MethodCall> corr = new ArrayList<MethodCall>();
 							corr.add(event);
 							sootMethodToDateEvents.put(method, corr);
+						}
+					}
+
+					if(method.method().hasActiveBody()) {
+
+						for (Unit unit : method.method().retrieveActiveBody().getUnits()) {
+							SootMethod invokedMethod = null;
+
+							if(InvokeStmt.class.isAssignableFrom(unit.getClass())){
+								invokedMethod = ((InvokeStmt) unit).getInvokeExpr().getMethod();
+							} else if(AssignStmt.class.isAssignableFrom(unit.getClass())
+										&& InvokeExpr.class.isAssignableFrom(((AssignStmt) unit).getRightOp().getClass())){
+								invokedMethod = ((InvokeExpr) ((AssignStmt) unit).getRightOp()).getMethod();
+							}
+
+							if(invokedMethod != null) {
+
+								if (Matching.matchesMethod(invokedMethod, event)) {
+									methods.add(invokedMethod);
+
+									if (sootMethodToDateEvents.containsKey(invokedMethod)
+											&& !sootMethodToDateEvents.get(invokedMethod).contains(event)) {
+										sootMethodToDateEvents.get(invokedMethod).add(event);
+									} else if (!sootMethodToDateEvents.containsKey(invokedMethod)) {
+										List<MethodCall> corr = new ArrayList<MethodCall>();
+										corr.add(event);
+										sootMethodToDateEvents.put(invokedMethod, corr);
+									}
+								}
+							}
 						}
 					}
 				}
@@ -201,7 +236,7 @@ public class MethodsAnalysis {
 		
 		sootMethodToDateEvents = sootMethodToDateEventsNew;
 	}
-	
+
 	public static List<MethodOrMethodContext> reachableMethods(Scene scene){
 
 		ReachableMethods reachableMethodsObject = Scene.v().getReachableMethods();
@@ -253,9 +288,7 @@ public class MethodsAnalysis {
 			//	int sourceLineNumber = sourceStatement.getJavaSourceStartLineNumber();
 				
 				if(sourceStatement != null && sourceStatement.containsInvokeExpr()){
-					if(sourceStatement.getInvokeExpr().toString().contains("PurseList")){
-						System.out.println("");
-					}
+
 					InvokeExpr expr = sourceStatement.getInvokeExpr();
 					//if(expr instanceof InstanceInvokeExpr){
 					if(expr instanceof InvokeExpr){
@@ -279,20 +312,37 @@ public class MethodsAnalysis {
 							
 							methodInvokedWhere.put(expr.getMethodRef().resolve(), invoked);
 						}
-						
+
 						//for each matching DateLabel
 						//better to turn all these to match method calls rather than dateEvent<datelabel>
 						List<MethodCall> matchingMethodCalls = sootMethodToDateEvents.get(invokedMethod.get(expr));
 
-						if(matchingMethodCalls != null
-								&& expr instanceof InstanceInvokeExpr){
-						
-							//this is the objectof calling class
-							//what if static method?
-							Value classObject = ((InstanceInvokeExpr)expr).getBase();
-							
-							List<Value> args = expr.getArgs();
-							
+						if(matchingMethodCalls != null){
+
+							//TODO make sure all actual invoke exprs are being associated with a for each var
+
+							List<Value> args = new ArrayList<>();
+							Value classObject = null;
+
+							if (AbstractVirtualInvokeExpr.class.isAssignableFrom(expr.getClass())) {
+
+								AbstractVirtualInvokeExpr invokeExpr = (AbstractVirtualInvokeExpr) expr;
+								classObject = ((InstanceInvokeExpr)expr).getBase();
+
+								args.addAll(invokeExpr.getArgs());
+
+							} else if (AbstractInstanceInvokeExpr.class.isAssignableFrom(expr.getClass())) {
+
+								AbstractInstanceInvokeExpr invokeExpr = (AbstractInstanceInvokeExpr) expr;
+								classObject = ((InstanceInvokeExpr)expr).getBase();
+
+								args.addAll(invokeExpr.getArgs());
+							} else {//(AbstractStaticInvokeExpr.class.isAssignableFrom(invoke.getClass())){
+								args.addAll(expr.getArgs());
+							}
+
+
+
 							if(args == null){
 								args = new ArrayList<Value>();
 							}
@@ -313,17 +363,28 @@ public class MethodsAnalysis {
 								MethodCall current = matchingMethodCalls.get(i);								
 								
 							//	listOfForEachVarsValue.add(forEachVarValue);
-								
-								
+
+								if(current.toString().contains("addLeaf")){
+									System.out.print("");
+									//TODO check why for MufinB1 benchmark addleaf method not being matched with return variable
+								}
+
+
+
 								for(String forEachVar : current.forEachVariables){
-									if(current.whereMap.get(forEachVar).equals(current.objectIdentifier)){
+									if(classObject != null
+										&& current.whereMap.get(forEachVar).equals(current.objectIdentifier)){
+
 										forEachVarValue.put(forEachVar, classObject);
 									}
 									else if(current.whereMap.get(forEachVar).equals(current.returnIdentifier)
-											&& current.isConstructor){
-										forEachVarValue.put(forEachVar, classObject);
+											&& AssignStmt.class.isAssignableFrom(sourceStatement.getClass())){
+											//&& current.isConstructor){
+
+										forEachVarValue.put(forEachVar, ((AssignStmt) sourceStatement).getLeftOp());
 									}
 									else{
+
 										for(int j = 0; j < current.argIdentifiers.size(); j++){
 											if(current.whereMap.get(forEachVar).equals(current.argIdentifiers.get(j))){
 												forEachVarValue.put(forEachVar, args.get(j));

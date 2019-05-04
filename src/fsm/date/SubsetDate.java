@@ -129,7 +129,7 @@ public class SubsetDate extends DateFSM{
 	}
 
 	public SubsetDate(DateFSM parent, final Collection<Transition<String,DateLabel>> transitionsToKeep, Map<String,Set<String>> methodsPossibleAtStates){
-		new SubsetDate(parent, transitionsToKeep, methodsPossibleAtStates, true);
+		this(parent, transitionsToKeep, methodsPossibleAtStates, true);
 	}
 
 	public SubsetDate(DateFSM parent, final Collection<Transition<String,DateLabel>> transitionsToKeep, Map<String,Set<String>> methodsPossibleAtStates, Boolean keepUnreachable){
@@ -219,17 +219,27 @@ public class SubsetDate extends DateFSM{
 		return thisState;
 	}
 
-	public void add(fsm.date.SubsetDate otherDate){
+	public void add(fsm.date.SubsetDate otherDate) {
+		add(otherDate, true);
+	}
+
+	public void add(fsm.date.SubsetDate otherDate, boolean reductions){
 		//create a date that contains all the transitions of this date and the other date
 
-		otherDate.reachabilityReduction();
-		this.reachabilityReduction();
+		if(reductions) {
+			otherDate.reachabilityReduction();
+			this.reachabilityReduction();
+		}
 
 		for(State<String,DateLabel> s : otherDate.states){
 			this.addStateAndContinuation(s);
 
 			if(otherDate.finalStates.contains(s)){
 				this.addFinalState(s);
+			}
+
+			if(otherDate.badStates.contains(s)){
+				this.addBadState(s);
 			}
 
 			if(otherDate.acceptingStates.contains(s)){
@@ -240,6 +250,8 @@ public class SubsetDate extends DateFSM{
 				this.addInitialState(s);
 			}
 		}
+
+		this.transitions.addAll(otherDate.transitions);
 		
 		for(String label : this.stateHoareTripleMethod.keySet()){
 			if(otherDate.stateHoareTripleMethod.containsKey(label)){

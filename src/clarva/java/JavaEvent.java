@@ -11,6 +11,7 @@ import fsm.date.events.ClockEvent;
 import fsm.date.events.MethodCall;
 import soot.Local;
 import soot.SootMethod;
+import soot.Unit;
 import soot.Value;
 import soot.jimple.InvokeExpr;
 import soot.jimple.Stmt;
@@ -54,6 +55,10 @@ public class JavaEvent extends CFGEvent {
 //	static int i = 0;
 	public void inferBinding(SootMethod method, LocalMustAliasAnalysis methodMustAlias,  LocalMustNotAliasAnalysis methodMustNotAlias){
 		this.callingMethod = method;
+
+		if(method == null){
+			System.out.print("");
+		}
 		if(epsilon) return;
 		
 		MethodCall methodCallEvent = (MethodCall) dateEvent;
@@ -65,7 +70,7 @@ public class JavaEvent extends CFGEvent {
 			//In this case no, since shadow(a) != shadow(a') => shadow(u) != shadow(u')
 			//But in general we can have an aribitrary a.equals() function that does not depend on a.u
 			//e.g. a.equals(a') <= a.value = a'.value
-			//If ppDate's don't use Larva's method of instanstiating fields we don't have a problem
+			//For ppDate's, if they don't use Larva's method of instanstiating fields we don't have a problem
 			//Otherwise heq, maybe Bodden's Boomerang can help
 //			i++;
 //			System.out.println(i);
@@ -75,13 +80,39 @@ public class JavaEvent extends CFGEvent {
 //				objectBinding.put(var, null);
 //				continue;
 //			}
-			
-			InstanceKey key = new InstanceKey(local, stmt, method, methodMustAlias, methodMustNotAlias);
+
+			InstanceKey key = null;
+
+			if(local != null) {
+			    try {
+                    key = new InstanceKey(local, stmt, method, methodMustAlias, methodMustNotAlias);
+                } catch (Exception e){
+			        e.printStackTrace();
+                }
+			}
 			objectBinding.put(var, key);
 		}
 	}
 	
 	public boolean mayAlias(JavaEvent s){
+
+		if(s.callingMethod == null){
+			SootMethod sCallingMethod = JavaCFGAnalysis.cfgAnalysis.ma.invokeExprInMethod.get(s.invocation).method();
+			Unit unitOfsCallingMethod = JavaCFGAnalysis.cfgAnalysis.ma.invokeExprToUnit.get(s.invocation);
+
+			JavaMethodIdentifier sCallingMethodID = (JavaMethodIdentifier) JavaCFGAnalysis.cfgAnalysis.statementCalledBy.get(unitOfsCallingMethod);
+
+			s.inferBinding(sCallingMethod, JavaCFGAnalysis.cfgAnalysis.methodMustAlias.get(sCallingMethodID), JavaCFGAnalysis.cfgAnalysis.methodMustNotAlias.get(sCallingMethodID));
+			return true;
+		} else if (this.callingMethod == null){
+			SootMethod thisCallingMethod = JavaCFGAnalysis.cfgAnalysis.ma.invokeExprInMethod.get(this.invocation).method();
+			Unit unitOfthisCallingMethod = JavaCFGAnalysis.cfgAnalysis.ma.invokeExprToUnit.get(this.invocation);
+
+			JavaMethodIdentifier thisCallingMethodID = (JavaMethodIdentifier) JavaCFGAnalysis.cfgAnalysis.statementCalledBy.get(unitOfthisCallingMethod);
+
+			s.inferBinding(thisCallingMethod, JavaCFGAnalysis.cfgAnalysis.methodMustAlias.get(thisCallingMethodID), JavaCFGAnalysis.cfgAnalysis.methodMustNotAlias.get(thisCallingMethodID));
+		}
+
 		//if shadows are in same method
 		if(s.callingMethod.equals(this.callingMethod)){
 			for(String var : this.objectBinding.keySet()){
@@ -145,7 +176,7 @@ public class JavaEvent extends CFGEvent {
 	public String toString(){
 		if(this.epsilon)
 			return "epsilon";
-		else return invocation.toString() + " in " + unit.toString();
+		else return  this.dateEvent.name;//return invocation.toString() + " in " + unit.toString();
 	}
 	
 	public int hashCode(){

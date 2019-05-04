@@ -69,7 +69,9 @@ public class MethodCall extends DateEvent{
 				this.objectType = event.target.text;
 				this.objectIdentifier = "";
 				this.staticMethod = true;
-				if(name.equals("new")) isConstructor = true;
+				if(name.equals("new")) {
+					isConstructor = true;
+				}
 			}
 			else{
 				this.objectIdentifier = event.target.text;
@@ -321,8 +323,11 @@ public class MethodCall extends DateEvent{
 			for(int i = 0; i < forEachVariables.size(); i++){
 				String var = forEachVariables.get(i);
 				String varType = forEachVariableTypes.get(i);
-				
-				if(this.whereMap.get(var).contains(".")){
+
+				//first condition deals with events used in for each but declared outside of for each, i.e. without for each var
+				//second condition deals with for each var is associated not with a variable but with a field of a variable (or a method call, or array location)
+				if(!this.whereMap.containsKey(var)
+						|| this.whereMap.get(var).contains(".")){
 					this.forEachVariablesAsFields.add(var);
 					this.forEachVariableTypesAsFields.add(varType);
 				}

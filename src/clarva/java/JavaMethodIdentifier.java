@@ -2,6 +2,7 @@ package clarva.java;
 
 import clarva.matching.MethodIdentifier;
 import org.jboss.util.platform.Java;
+import soot.BodyTransformer;
 import soot.MethodOrMethodContext;
 
 import java.util.HashMap;
@@ -38,5 +39,10 @@ public class JavaMethodIdentifier extends MethodIdentifier {
         if(methodOrMethodContext == null) return -1;
 
         return methodOrMethodContext.hashCode();
+    }
+
+    @Override
+    public String toString(){
+        return methodOrMethodContext.toString();
     }
 }

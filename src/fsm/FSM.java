@@ -7,6 +7,8 @@ import java.util.*;
 
 public class FSM<T, S> {
 
+    public String name;
+
     public Set<State<T, S>> states;
     public Set<State<T, S>> initial;
     public Set<Transition<T, S>> transitions;
@@ -22,6 +24,7 @@ public class FSM<T, S> {
     public boolean neverFails;
 
     public FSM() {
+        name = "";
         states = new HashSet<State<T, S>>();
         transitions = new HashSet<Transition<T, S>>();
         finalStates = new HashSet<State<T, S>>();
@@ -681,11 +684,13 @@ public class FSM<T, S> {
     public String toString() {
         //if(neverFails) return "FSM never violates!";
 
-        String representation = "";
+        String representation = "digraph " + name + " {\n";
 
         for (Transition<T, S> t : this.transitions) {
             representation += t.toString() + "\n";
         }
+
+        representation += "}";
 
         return representation;
     }
