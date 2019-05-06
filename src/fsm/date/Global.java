@@ -14,11 +14,11 @@ import java.util.regex.Pattern;
 
 public class Global {
 
-	List<String> variableDeclarations;
-	compiler.Events events;
+	public List<String> variableDeclarations;
+	public compiler.Events events;
 	public List<DateFSM> properties;
 	public Set<ForEach> forEaches;
-	List<String> methods;
+	public List<String> methods;
 	public String imports;
 	
 	public Global(List<String> variableDeclarations, 

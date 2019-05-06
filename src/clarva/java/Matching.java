@@ -16,6 +16,7 @@ import fsm.date.events.MethodCall;
 import soot.*;
 import soot.jimple.InvokeExpr;
 import soot.jimple.spark.sets.EmptyPointsToSet;
+import soot.util.Chain;
 
 public class Matching {
 
@@ -124,6 +125,59 @@ public class Matching {
 	    
 	}
 
+	public static SootClass getSootClass(String className){
+	    SootClass sootClass = Scene.v().getSootClass(className);
+		//proper classes have java.lang.Object as a superclass
+	    if(!sootClass.hasSuperclass()){
+            Chain<SootClass> classes = Scene.v().getClasses();
+
+            List<SootClass> matching = new ArrayList<>();
+
+            for(SootClass sootClass1 : classes){
+                if(sootClass1.getShortJavaStyleName().equals(className)){
+                    matching.add(sootClass1);
+                }
+            }
+
+            if(matching.size() == 1) return matching.get(0);
+            else {
+            	//for some reason sometimes there is an empty class corresponding to a full sootclass
+            	matching.remove(sootClass);
+
+				if(matching.size() == 1){
+					return matching.get(0);
+				} else {
+					return null;
+				}
+			}
+
+        } else{
+	        return sootClass;
+        }
+    }
+
+    public static Boolean subStructureOf(SootClass child, SootClass parent){
+		if(child.equals(parent)) return true;
+
+		if(!child.isInterface() && !parent.isInterface()
+				&& Scene.v().getActiveHierarchy().isClassSubclassOf(child, parent)) {
+			return true;
+		}
+
+		if(child.isInterface() && parent.isInterface()
+				&& Scene.v().getActiveHierarchy().isInterfaceSubinterfaceOf(child, parent)) {
+			return true;
+		}
+
+		if(child.getInterfaces().contains(parent)) {
+			return true;
+		}
+
+		//anything else to do?
+
+		return false;
+	}
+
 	public static Boolean typeMatches(String larvaType, SootClass sootClass){
 		boolean classTypeMatches = true;
 
@@ -139,42 +193,54 @@ public class Matching {
 
 			try{
 
-				String fullClassName = getFullClassName(className);
+			    SootClass sootClass1 = getSootClass(className);
+                if(sootClass1 == null){
+                    return true;
+                }
 
-				if(fullClassName.equals("")) fullClassName = className;
-				Class larvaEventType = ClassUtils.getClass(fullClassName);
-				Class sootMethodType = ClassUtils.getClass(sootClass.getType().getClassName());
-
-
-				//if the larvaEventType is a super class of sootMethodType
-				if(!larvaEventType.isAssignableFrom(sootMethodType)){
-					return false;
-				}
-				else{
-					classTypeMatches = true;
-				}
-			} catch (ClassNotFoundException e) {
-
-				try {
-					Class sootMethodType = ClassUtils.getClass(sootClass.getType().getClassName());
-
-					Class superClass = sootMethodType.getSuperclass();
-					do {
-						if(superClass.getName().endsWith(className)){
-							classTypeMatches = true;
-							superClass = Object.class;
-						} else{
-							superClass = sootMethodType.getSuperclass();
-						}
-					} while(!superClass.equals(Object.class));
-
-					if(!classTypeMatches) return false;
-
-				} catch (ClassNotFoundException ex) {
-					//just in case, don t return false
-					classTypeMatches = true;
+                if(!subStructureOf(sootClass, sootClass1)){
+                	return false;
 				}
 
+//				if(!sootClass1.equals(sootClass){
+//					if(!sootClass.isInterface() && !sootClass1.isInterface()
+//							&& !Scene.v().getActiveHierarchy().isClassSubclassOf(sootClass, sootClass1)) {
+//						if(sootClass1.isInterface() && sootClass.isInterface()
+//								&& !Scene.v().getActiveHierarchy().isInterfaceSubinterfaceOf(sootClass, sootClass1)) {
+//							if(!sootClass.getInterfaces().contains(sootClass1)) {
+//								return false;
+//							}
+//						}
+//					}
+//				}
+//				else if(!sootClass1.equals(sootClass)
+//                        && sootClass1.isInterface()
+//                        && !Scene.v().getActiveHierarchy().isInterfaceSubinterfaceOf(sootClass, sootClass1)){
+//					classTypeMatches = true;
+//				}
+			} catch (Exception e) {
+
+			    return true;
+//				try {
+//					Class sootMethodType = ClassUtils.getClass(sootClass.getType().getClassName());
+//
+//					Class superClass = sootMethodType.getSuperclass();
+//					do {
+//						if(superClass.getName().endsWith(className)){
+//							classTypeMatches = true;
+//							superClass = Object.class;
+//						} else{
+//							superClass = sootMethodType.getSuperclass();
+//						}
+//					} while(!superClass.equals(Object.class));
+//
+//					if(!classTypeMatches) return false;
+//
+//				} catch (ClassNotFoundException ex) {
+//					//just in case, don t return false
+//					classTypeMatches = true;
+//				}
+//
 			}
 		}
 
@@ -230,33 +296,44 @@ public class Matching {
 					continue;
 				}
 
-				Class<?> sootMethodType;
-				Class<?> larvaActionType;
+//				Class<?> sootMethodType;
+//				Class<?> larvaActionType;
 				try {
 
-					String fullClassName = getFullClassName(larvaActionTypes.get(i).toString());
+//					String fullClassName = getFullClassName(larvaActionTypes.get(i).toString());
+//
+//					sootMethodType = ClassUtils.getClass(sootMethodTypes.get(j).toString());
+//					larvaActionType = ClassUtils.getClass(fullClassName);
+//
+//					//or other way round?
+//					if(!larvaActionType.isAssignableFrom(sootMethodType)
+//							&& !ClassUtils.isAssignable(larvaActionType, sootMethodType)){
+//						return false;
+//					}
 
-					sootMethodType = ClassUtils.getClass(sootMethodTypes.get(j).toString());
-					larvaActionType = ClassUtils.getClass(fullClassName);
+					if(!larvaActionTypes.get(i).equals("*")) {
 
-					//or other way round?
-					if(!larvaActionType.isAssignableFrom(sootMethodType)
-							&& !ClassUtils.isAssignable(larvaActionType, sootMethodType)){
-						return false;
+						if (!sootMethodTypes.get(j).toString().equals(larvaActionTypes.get(i))
+								&& !sootMethodTypes.get(j).toString().endsWith(larvaActionTypes.get(i))
+								&& !larvaActionTypes.get(i).endsWith(sootMethodTypes.get(j).toString())
+								&& !sootMethod.getDeclaringClass().getType().getClassName().equals("Object")) {
+
+							if (RefType.class.isAssignableFrom(sootMethodTypes.get(i).getClass())
+									&& !typeMatches(larvaActionTypes.get(i), ((RefType) sootMethodTypes.get(j)).getSootClass())) {
+
+								return false;
+							}
+						}
 					}
 
-				} catch (ClassNotFoundException e) {
+
+
+				} catch (Exception e) {
 					// TODO Auto-generated catch block
 				//	e.printStackTrace();
 					//This handles when .getClass fails (e.g. when .getClass(String) instead of .getClass(java.lang.String)
 					//in this case we just check whether the two strings are equal, or one of them ends with the other
 					//e.g. since java.lang.String ends with String then we assume that they will match
-					if(!sootMethodTypes.get(i).toString().equals(larvaActionTypes.get(i))
-							&& !sootMethodTypes.get(i).toString().endsWith(larvaActionTypes.get(i))
-							&& !larvaActionTypes.get(i).endsWith(sootMethodTypes.get(i).toString())
-							&& !sootMethod.getDeclaringClass().getType().getClassName().equals("Object")){
-						return false;
-					}
 				}
 
 
@@ -335,6 +412,7 @@ public class Matching {
 
 		return classTypeMatches && methodNameMatches && argTypeMatches && returnTypeMatches;
 	}
+
 
 	//// Used for Orphans Analysis ////
 	public Boolean flowInsensitiveCompatible(JavaEvent shadow, JavaEvent otherShadow){

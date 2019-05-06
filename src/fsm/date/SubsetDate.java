@@ -34,24 +34,29 @@ public class SubsetDate extends DateFSM{
 		}
 
 		for(String label : this.stateHoareTripleMethod.keySet()){
-			State<String,DateLabel> state = this.labelToState.get(label);
+//			State<String,DateLabel> state = this.labelToState.get(label);
 			List<String> toKeep = new ArrayList<String>();
-			for(String method : this.stateHoareTripleMethod.get(state.label)){
-				for(DateEvent dateEvent : alphabetToKeep) {
-					if (dateEvent.getClass().equals(MethodCall.class)) {
-						MethodCall methodCall = (MethodCall) dateEvent;
+//			if(state == null){
+//				System.out.print("");
+//			}
+			if(this.stateHoareTripleMethod.get(label) != null){
+				for(String method : this.stateHoareTripleMethod.get(label)) {
+					for (DateEvent dateEvent : alphabetToKeep) {
+						if (dateEvent.getClass().equals(MethodCall.class)) {
+							MethodCall methodCall = (MethodCall) dateEvent;
 
- 						String methodClass = method.split("\\.")[0];
-						String methodName = method.split("\\.")[1];
+							String methodClass = method.split("\\.")[0];
+							String methodName = method.split("\\.")[1];
 
-						if (methodCall.name.equals(methodName)
-								&& methodCall.objectType.equals(methodClass)) {
-							toKeep.add(method);
+							if (methodCall.name.equals(methodName)
+									&& methodCall.objectType.equals(methodClass)) {
+								toKeep.add(method);
+							}
 						}
 					}
 				}
 			}
-			this.stateHoareTripleMethod.get(state.label).retainAll(toKeep);
+			this.stateHoareTripleMethod.get(label).retainAll(toKeep);
 		}
 
 		//this.alphabet = alphabetToKeep;
@@ -132,7 +137,7 @@ public class SubsetDate extends DateFSM{
 		this(parent, transitionsToKeep, methodsPossibleAtStates, true);
 	}
 
-	public SubsetDate(DateFSM parent, final Collection<Transition<String,DateLabel>> transitionsToKeep, Map<String,Set<String>> methodsPossibleAtStates, Boolean keepUnreachable){
+	public SubsetDate(DateFSM parent, final Collection<Transition<String,DateLabel>> transitionsToKeep, Map<String,Set<String>> methodsPossibleAtStates, Boolean removeUnreachablePart){
 		super(parent);
 		//this.alphabet = alphabetToKeep;
 		this.parent = parent;
@@ -161,7 +166,7 @@ public class SubsetDate extends DateFSM{
 			this.stateHoareTripleMethod.get(label).retainAll(methodsPossibleAtStates.get(label));
 		}
 
-		if(keepUnreachable) {
+		if(removeUnreachablePart) {
 			this.reachabilityReduction();
 		}
 
@@ -226,6 +231,8 @@ public class SubsetDate extends DateFSM{
 	public void add(fsm.date.SubsetDate otherDate, boolean reductions){
 		//create a date that contains all the transitions of this date and the other date
 
+		this.alphabet.addAll(otherDate.alphabet);
+
 		if(reductions) {
 			otherDate.reachabilityReduction();
 			this.reachabilityReduction();
@@ -235,20 +242,32 @@ public class SubsetDate extends DateFSM{
 			this.addStateAndContinuation(s);
 
 			if(otherDate.finalStates.contains(s)){
-				this.addFinalState(s);
+				if(!s.label.equals("")) {
+					this.addFinalState(s);
+				}
 			}
 
 			if(otherDate.badStates.contains(s)){
-				this.addBadState(s);
+				if(!s.label.equals("")) {
+					this.addBadState(s);
+				}
 			}
 
 			if(otherDate.acceptingStates.contains(s)){
-				this.addAcceptingState(s);
+				if(!s.label.equals("")) {
+					this.addAcceptingState(s);
+				}
 			}
 
 			if(otherDate.initial.contains(s)){
-				this.addInitialState(s);
+				if(!s.label.equals("")) {
+					this.addInitialState(s);
+				}
 			}
+		}
+
+		if(this.startingState.label.equals("")){
+			this.startingState = otherDate.startingState;
 		}
 
 		this.transitions.addAll(otherDate.transitions);

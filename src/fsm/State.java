@@ -80,23 +80,23 @@ public class State<T,S> {
 
 	public void removeOutgoingTransition(Event<S> action, fsm.State<T,S> state){
 		if((outgoingTransitions.containsKey(action)
-				&& outgoingTransitions.get(action).contains(state))){
+				&& outgoingTransitions.get(action).contains(state.label))){
 
-			outgoingTransitions.get(action).remove(state);
+			outgoingTransitions.get(action).remove(state.label);
 		}
 	}
 
 	public void removeIncomoingTransition(Event<S> action, fsm.State<T,S> state){
 		if((incomingTransitions.containsKey(action)
-				&& incomingTransitions.get(action).contains(state))){
+				&& incomingTransitions.get(action).contains(state.label))){
 
-			incomingTransitions.get(action).remove(state);
+			incomingTransitions.get(action).remove(state.label);
 		}
 	}
 
 	public void addOutgoingTransition(Event<S> action, fsm.State<T,S> state){
 		if(!(outgoingTransitions.containsKey(action)
-				&& outgoingTransitions.get(action).contains(state))){
+				&& outgoingTransitions.get(action).contains(state.label))){
 
 			Set<T> destinationLabels = outgoingTransitions.get(action);
 			if(destinationLabels == null)
@@ -109,17 +109,18 @@ public class State<T,S> {
 	}
 
 	public void addOutgoingTransition(Event<S> action, Set<fsm.State<T,S>> states){
-		if(!(outgoingTransitions.containsKey(action)
-				&& outgoingTransitions.get(action).containsAll(states))){
-
-			Set<T> destinationLabels = new HashSet<T>();
-
-			for(fsm.State<T,S> state : states) {
-				destinationLabels.add(state.label);
-			}
-
-			outgoingTransitions.put(action, destinationLabels);
+		Set<T> destinationLabels;
+		if(!(outgoingTransitions.containsKey(action))) {
+			destinationLabels = new HashSet<T>();
+		} else {
+			destinationLabels = outgoingTransitions.get(action);
 		}
+
+		for(fsm.State<T,S> state : states) {
+			destinationLabels.add(state.label);
+		}
+
+		outgoingTransitions.put(action, destinationLabels);
 	}
 
 //	public void addOutgoingTransitions(Map<Event<S>, Set<State<T,S>>> transitions){
@@ -128,7 +129,7 @@ public class State<T,S> {
 
 	public void addIncomingTransition(Event<S> action, fsm.State<T,S> state){
 		if(!(incomingTransitions.containsKey(action)
-				&& incomingTransitions.get(action).contains(state))){
+				&& incomingTransitions.get(action).contains(state.label))){
 
 			Set<T> destinationLabels = incomingTransitions.get(action);
 			if(destinationLabels == null)
@@ -141,17 +142,19 @@ public class State<T,S> {
 	}
 
 	public void addIncomingTransition(Event<S> action, Set<fsm.State<T,S>> states){
-		if(!(incomingTransitions.containsKey(action)
-				&& incomingTransitions.get(action).containsAll(states))){
+		Set<T> destinationLabels;
 
-			Set<T> destinationLabels = new HashSet<T>();
-
-			for(fsm.State<T,S> state : states){
-				destinationLabels.add(state.label);
-			}
-
-			incomingTransitions.put(action, destinationLabels);
+		if(!(incomingTransitions.containsKey(action))) {
+			destinationLabels = new HashSet<T>();
+		} else {
+			destinationLabels = incomingTransitions.get(action);
 		}
+
+		for(fsm.State<T,S> state : states){
+			destinationLabels.add(state.label);
+		}
+
+		incomingTransitions.put(action, destinationLabels);
 	}
 
 //	public void addIncomingTransitions(Map<Event<S>,Set<State<T,S>>> transitions){

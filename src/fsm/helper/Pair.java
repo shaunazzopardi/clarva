@@ -13,7 +13,7 @@ public class Pair<S,R> {
 	}
 	
 	public String toString(){
-		return "(" + this.first.toString() + ", " + this.second.toString() + ")";
+		return "(" + (this.first == null ? "" : this.first.toString()) + ", " + (this.second == null ? "" : this.second.toString()) + ")";
 	}
 	
 	public int hashCode(){
@@ -27,8 +27,10 @@ public class Pair<S,R> {
 	public boolean equals(Object obj){
 		if(obj.getClass() == this.getClass()){
 			fsm.helper.Pair otherPair = (fsm.helper.Pair) obj;
-			if(otherPair.first.equals(this.first)){
-				if(otherPair.second.equals(this.second)){
+			if((otherPair.first == null && otherPair.first == null)
+					|| otherPair.first.equals(this.first)){
+				if((otherPair.second == null && otherPair.second == null)
+					||otherPair.second.equals(this.second)){
 					return true;
 				}
 			}

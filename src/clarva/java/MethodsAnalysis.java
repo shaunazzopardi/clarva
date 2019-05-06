@@ -6,6 +6,7 @@ import soot.jimple.*;
 import soot.jimple.internal.AbstractInstanceInvokeExpr;
 import soot.jimple.internal.AbstractVirtualInvokeExpr;
 import soot.jimple.toolkits.callgraph.CallGraph;
+import soot.jimple.toolkits.callgraph.ContextSensitiveCallGraph;
 import soot.jimple.toolkits.callgraph.Edge;
 import soot.jimple.toolkits.callgraph.ReachableMethods;
 import soot.util.queue.QueueReader;
@@ -72,6 +73,7 @@ public class MethodsAnalysis {
 //		while(!Scene.v().doneResolving()){}
 		
 		CallGraph cg = scene.getCallGraph();
+
 		try{
 		    PrintWriter writer = new PrintWriter("cg2-FiTS.txt", "UTF-8");
 		    writer.println(cg);
@@ -165,7 +167,7 @@ public class MethodsAnalysis {
 				List<MethodOrMethodContext> methods = new ArrayList<MethodOrMethodContext>();
 				
 				for(int i = 0; i < reachableMethods.size(); i++){
-					if(reachableMethods.get(i).method().getName().contains("payToCompanyFromCard")){
+					if(reachableMethods.get(i).method().getName().contains("addInnerNode")){
 						System.out.print("");
 					}
 					MethodOrMethodContext method = reachableMethods.get(i);
@@ -286,7 +288,15 @@ public class MethodsAnalysis {
 				//get edge source statement (the 
 				Stmt sourceStatement = edge.srcStmt(); 
 			//	int sourceLineNumber = sourceStatement.getJavaSourceStartLineNumber();
-				
+
+			//FOR DEBUGGING
+			try {
+				if (sourceStatement.toString().contains("black")) {
+					System.out.print("");
+				}
+			} catch(Exception e){
+					System.out.print("");
+				}
 				if(sourceStatement != null && sourceStatement.containsInvokeExpr()){
 
 					InvokeExpr expr = sourceStatement.getInvokeExpr();

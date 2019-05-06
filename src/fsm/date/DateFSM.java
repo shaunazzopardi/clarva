@@ -360,6 +360,8 @@ public class DateFSM extends FSM<String, DateLabel>{
 			}
 		}
 
+		this.startingState = fsm.startingState;
+
 		for(Transition<String,DateLabel> t : fsm.transitions){
 			this.addTransition(t);
 		}

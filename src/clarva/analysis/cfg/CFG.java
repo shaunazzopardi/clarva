@@ -2,6 +2,7 @@ package clarva.analysis.cfg;
 
 import java.util.*;
 
+import clarva.matching.MethodIdentifier;
 import fsm.Event;
 import fsm.FSM;
 import fsm.State;
@@ -11,6 +12,7 @@ import javafx.scene.effect.Shadow;
 public class CFG <St, Ev extends CFGEvent> extends FSM<Integer, Ev>{
 
 	public ArrayList<CFGState<St>> statements;
+	public MethodIdentifier methodID;
 
 	//why are we doing this?
     public Map<CFGState<St>, State<Integer, Ev>> labelToState;
@@ -141,7 +143,7 @@ public class CFG <St, Ev extends CFGEvent> extends FSM<Integer, Ev>{
 							incomingState.outgoingTransitions.remove(incomingEvents.get(0));
 						}
 						else{
-							incomingState.outgoingTransitions.get(incomingEvents.get(0)).remove(state);
+							incomingState.removeOutgoingTransition(incomingEvents.get(0), state);
 						}
 						
 						if(outgoingState.incomingTransitions.get(outgoingEvents.get(0)).size() == 1)
@@ -149,9 +151,9 @@ public class CFG <St, Ev extends CFGEvent> extends FSM<Integer, Ev>{
 							outgoingState.incomingTransitions.remove(outgoingEvents.get(0));
 						}
 						else{
-							outgoingState.incomingTransitions.get(outgoingEvents.get(0)).remove(state);
+							outgoingState.removeIncomoingTransition(outgoingEvents.get(0), state);
 						}
-						
+
 						this.addTransition(incomingState, outgoingEvents.get(0), outgoingState);
 						
 //						if(state.getInternalFSM() != null) outgoingState.setInternalFSM(state.getInternalFSM());

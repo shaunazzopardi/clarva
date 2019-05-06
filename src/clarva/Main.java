@@ -11,13 +11,12 @@ import java.util.Set;
 
 import clarva.java.PropertyTransformer;
 import com.google.common.io.Files;
+import fj.data.Option;
 import fsm.helper.Pair;
 import soot.*;
 import soot.JastAddJ.Opt;
 import soot.options.Options;
 import soot.util.Chain;
-
-import javax.swing.text.html.Option;
 
 import static soot.options.Options.*;
 
@@ -31,7 +30,7 @@ public class Main {
 		if(args.length < 3) {
 			System.out.println("Arguments must specify: (0) language to be analysed (options: java) " +
 					"(1) property files followed by the " +
-					"(2) program directory, and finally the (3) main class.");
+					"(2) program directory, and finally the (3) main method.");
 			return;
 		}
 
@@ -51,12 +50,12 @@ public class Main {
 			}
 			packagesToConsider.remove("");
 			//must add all libraries imported by class files
-			packagesToConsider.add("java.lang.Thread");
-//			packagesToConsider.add("java.util.*");
+//			packagesToConsider.add("java.lang.invoke.LambdaMetafactory");
+		//	packagesToConsider.add("java.util.*");
 //			//	packagesToConsider.add("java.io.*");
 		   	initializeSoot(mainClass, programPath, packagesToConsider);
 
-			G.reset();
+//			G.reset();
 
 //			//this generates java files
 //			if(!PropertyTransformer.allSatisfied) {
@@ -77,27 +76,49 @@ public class Main {
 	    Options.v().set_whole_program(true);
 //	    Options.v().setPhaseOption("jtp", "enabled:true");
 	    Options.v().setPhaseOption("jb", "use-original-names:true");
-	    Options.v().setPhaseOption("cg.spark", "enabled:true");
-	//    Options.v().setPhaseOption("cg.spark", "on-fly-cg:true");
-	//    Options.v().setPhaseOption("cg.spark", "apponly:true");
+
+		  Options.v().setPhaseOption("cg.cha", "enabled:true");
+//		  Options.v().setPhaseOption("cg.spark", "enabled:true");
+//		Options.v().setPhaseOption("cg.spark", "on-fly-cg:false");
+//		  Options.v().setPhaseOption("cg.spark", "verbose:true");
+
+//		Options.v().setPhaseOption("cg.spark", "rta:true");
+//		Options.v().setPhaseOption("cg.spark", "geom-pta:true");
+//		Options.v().setPhaseOption("cg.spark", "geom-runs:3");
+//		Options.v().setPhaseOption("cg.spark", "simulate-natives:true");
+
+//		Options.v().setPhaseOption("cg.spark", "apponly:true");
+//		Options.v().setPhaseOption("cg.spark", "simple-edges-bidirectional:true");
+//		Options.v().setPhaseOption("cg.cha", "enabled:true");
+
+//		Options.v().setPhaseOption("cg.spark", "cs-demand:true");
+//		Options.v().setPhaseOption("cg.spark", "passes:20");
+	////	  Options.v().setPhaseOption("cg.spark", "geom-pta:true");
+//		  Options.v().setPhaseOption("cg.spark", "geom-runs:2");
+	 ////   Options.v().setPhaseOption("cg.spark", "on-fly-cg:true");
+//	    Options.v().s/etPhaseOption("cg.spark", "apponly:true");
 	//    String userdir = System.getProperty("user.dir");
 	//    String sootCp = userdir + "/targets";
 
+		  //analysis is sound as long as methods before an event triggering point is included
+		  //this is used to reduce time and memory needed
 	    Options.v().set_no_bodies_for_excluded(true);
 	    
 	    List<String> packagesToExclude = new ArrayList<String>();
 	    packagesToExclude.add("java.*");
 	    packagesToExclude.add("jdk.*");
+	    packagesToExclude.add("sun.*");
 	    Options.v().set_exclude(packagesToExclude);
 	    
-//	    Options.v().set_include(new ArrayList<String>(packagesToConsider));
-	    
-	    Options.v().setPhaseOption("cg.spark", "geom-pta:true");
-	    Options.v().setPhaseOption("cg.spark", "geom-runs:2");
-//	    Options.v().set_soot_classpath(sootCp);
-//	    Options.v().set_prepend_classpath(true);
+	    Options.v().set_include(new ArrayList<String>(packagesToConsider));
+
+
+	    Options.v().set_soot_classpath(sootCp);
+	    Options.v().set_prepend_classpath(true);
 	    Options.v().set_allow_phantom_refs(true);
 	    Options.v().keep_line_number();
+
+//	    String mainClass = mainMethod.replaceAll("\\.[^\\.]+$", "");
 	    Options.v().set_main_class(mainClass);
 
 	    Options.v().set_output_dir(outputDir);
@@ -110,7 +131,6 @@ public class Main {
 
 //	    Options.v().out();
 	    Options.v().set_output_format(output_format_class);
-	    Options.v().dump_body();
 		  Options.v().set_process_dir(Arrays.asList(new String[]{sootCp}));
 //	    Options.v().set_oaat(true);
 //	    Options.v().set_output_format(Options.output_format_dava);
@@ -124,6 +144,9 @@ public class Main {
 	    if (c != null) {
 	      c.setApplicationClass();
 	    }
+
+//	    String mainEntryMethodName = mainMethod.replaceAll(".+\\.(?=[^\\.]+$)","");
+
 	    SootMethod methodByName = c.getMethodByName("main");
 	    List<SootMethod> ePoints = new LinkedList<>();
 	    ePoints.add(methodByName);
@@ -132,8 +155,9 @@ public class Main {
 	    PackManager.v().getPack("wjtp")
 	        .add(new Transform("wjtp.PropertyTransformer", new PropertyTransformer()));
 
-	    PackManager.v().getPack("cg").apply();
-	    PackManager.v().getPack("wjtp").apply();
+//	    PackManager.v().getPack("cg").apply();
+//	    PackManager.v().getPack("wjtp").apply();
+		PackManager.v().runPacks();
 
 //		  PhaseOptions.v().setPhaseOption("bb", "enabled");
 //		  PhaseOptions.v().setPhaseOption("db", "enabled");

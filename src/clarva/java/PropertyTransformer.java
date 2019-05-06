@@ -7,6 +7,7 @@ import clarva.analysis.ControlFlowResidualAnalysis;
 
 import clarva.analysis.cfg.CFGEvent;
 import clarva.matching.Aliasing;
+import com.google.common.collect.Sets;
 import com.google.common.io.Files;
 import compiler.Compiler;
 import compiler.Global;
@@ -26,6 +27,8 @@ import fsm.date.DateFSM;
 import fsm.date.ForEach;
 import fsm.date.SubsetDate;
 import fsm.main.DateToFSM;
+import soot.jimple.toolkits.callgraph.CallGraphBuilder;
+import soot.jimple.toolkits.typing.ClassHierarchy;
 import soot.options.Options;
 import soot.util.Chain;
 import soot.util.JasminOutputStream;
@@ -51,23 +54,27 @@ public class PropertyTransformer extends SceneTransformer{
 
     public static Map<DateFSM, Set<Event<JavaEvent>>> eventsToMonitorFor = new HashMap<>();
 
+    boolean quickcheck = false;
+    boolean orphans = false;
+
 	@Override
 	protected void internalTransform(String phaseName, Map<String, String> options) {
 
-		List<fsm.date.Global> residualGlobals = new ArrayList<fsm.date.Global>();
+//		List<fsm.date.Global> residualGlobals = new ArrayList<fsm.date.Global>();
 		
 		//System.out.println(dateFSMHierarchy);
 
 		for(fsm.date.Global global : dateFSMHierarchy){
-			Pair<fsm.date.Global, Boolean> globalBooleanPair = computeGlobalResidual(global);
-			fsm.date.Global globalResidual = globalBooleanPair.first;
-			residualGlobals.add(globalResidual);
+			Pair<fsm.date.Global, Boolean> globalBooleanPair = computeGlobalResidual(global, quickcheck, orphans);
+
+//			fsm.date.Global globalResidual = globalBooleanPair.first;
+//			residualGlobals.add(globalResidual);
 
 			if(!globalBooleanPair.second) {
 				allSatisfied = false;
 				try {
-					PrintWriter writer = new PrintWriter(clarva.Main.rootOutputDir + "/" + dateFSMHierarchy.indexOf(global) + "residual.lrv", "UTF-8");
-					writer.println(residualGlobals.get(residualGlobals.size() - 1).toStringWithEventInterface());
+					PrintWriter writer = new PrintWriter(clarva.Main.rootOutputDir + "/" + dateFSMHierarchy.indexOf(global) + "residual1st.lrv", "UTF-8");
+					writer.println(globalBooleanPair.first.toStringWithEventInterface());
 					writer.close();
 				} catch (IOException e) {
 					// do something
@@ -83,59 +90,63 @@ public class PropertyTransformer extends SceneTransformer{
 			}
 		}
 
-		Set<Pair<SootClass, SootMethod>> toRemove = new HashSet<>();
-
-		Chain<SootClass> classes = Scene.v().getApplicationClasses();
-		for(SootClass sootClass : classes) {
-			for (SootMethod method : sootClass.getMethods()) {
-				if (!method.hasActiveBody()) {
-				    try {
-                        method.retrieveActiveBody();
-                    }catch(Exception e){
-				        toRemove.add(new Pair<>(sootClass, method));
-				    }
-				}
-			}
-		}
-
-		for(Pair<SootClass, SootMethod> pair : toRemove){
-			pair.first.removeMethod(pair.second);
-			if(pair.first.getMethods().size() == 0){
-				Scene.v().getApplicationClasses().remove(pair.first);
-			}
-		}
+//		Set<Pair<SootClass, SootMethod>> toRemove = new HashSet<>();
+//
+//		Chain<SootClass> classes = Scene.v().getApplicationClasses();
+//		for(SootClass sootClass : classes) {
+//			for (SootMethod method : sootClass.getMethods()) {
+//				if (!method.hasActiveBody()) {
+//				    try {
+//                        method.retrieveActiveBody();
+//                    }catch(Exception e){
+//				        toRemove.add(new Pair<>(sootClass, method));
+//				    }
+//				}
+//			}
+//		}
+//
+//		for(Pair<SootClass, SootMethod> pair : toRemove){
+//			pair.first.removeMethod(pair.second);
+//			if(pair.first.getMethods().size() == 0){
+//				Scene.v().getApplicationClasses().remove(pair.first);
+//			}
+//		}
 	}
 	
-	public Pair<fsm.date.Global,Boolean> computeGlobalResidual(fsm.date.Global global){
+	public Pair<fsm.date.Global,Boolean> computeGlobalResidual(fsm.date.Global global, boolean quickcheck, boolean orphans){
 		boolean satisfied = true;
 
 		for(DateFSM property : new ArrayList<DateFSM>(global.properties)){
 			global.properties.remove(property);
-			DateFSM residual1 = computeResidual(property);
-			DateFSM residual = computeResidual(residual1);
 
-			//TEST: testing whether computing residual twice ever gives a different residual
-			if(residual1.transitions.size() != residual.transitions.size()){
-				System.out.print("");
-			}
+//			DateFSM residual1 = property;
+			DateFSM residual;
+
+			residual = computeResidual(property, quickcheck, orphans);
+
+//			while(residual.transitions.size() != 0 && residual.transitions.size() != residual1.transitions.size()){
+//				residual1 = residual;
+//				residual = computeResidual(residual1, quickcheck, orphans);
+//			}
+
 
 			if(!residual.neverFails) {
 				satisfied = false;
+
 				global.properties.add(residual);
 
-				try {
-					ProgramModifier.instrument();
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
 			} else{
 				System.out.println(residual.propertyName + " is always satisfied!");
 			}
+
+
+
+
 		}
 		
 		for(ForEach foreach : new HashSet<ForEach>(global.forEaches)){
 			global.forEaches.remove(foreach);
-			Pair<fsm.date.Global, Boolean> globalBooleanPair = computeGlobalResidual(foreach);
+			Pair<fsm.date.Global, Boolean> globalBooleanPair = computeGlobalResidual(foreach, quickcheck, orphans);
 			ForEach forEach = (ForEach) globalBooleanPair.first;
 			satisfied &= globalBooleanPair.second;
 			if(!globalBooleanPair.second) {
@@ -181,41 +192,55 @@ public class PropertyTransformer extends SceneTransformer{
 		}
 	}
 
-	public DateFSM computeResidual(DateFSM property){
+	class Triple<T>{
+		T quickcheck;
+		T orphans;
+		T controlflow;
+
+		public Triple(T quickcheck, T orphans, T controlflow){
+			this.quickcheck = quickcheck;
+			this.orphans = orphans;
+			this.controlflow = controlflow;
+		}
+	}
+
+	public DateFSM computeResidual(DateFSM property, boolean quickcheck, boolean orphans){
 		MethodsAnalysis ma = new MethodsAnalysis(Scene.v(), property.alphabet);
+//		ClassHierarchy.classHierarchy(Scene.v());
 
 		List<DateEvent> allUsedEvents = AnalysisAdaptor.allEvents(ma);
 		SubsetDate residual = ControlFlowResidualAnalysis.QuickCheckAnalysis(property, allUsedEvents);
-		
 
-		if(residual.neverFails){
+
+		if(residual.neverFails || quickcheck){
 			return residual;
-//			actionOnEnd(residual); 
+//			actionOnEnd(residual);
 //			return;
-		}		
+		}
 		else{
 //			System.out.println("After 1st:");
 //			System.out.println(residual);
 
 			Matching am = new Matching(ma);
 
+			Set<JavaEvent> allShadows = ma.allShadows;
+
 			//need to reduce shadows up to must-alias here.. using less precise flow-insensitive points-to analysis
 			Map<JavaEvent,SubsetDate> residuals = ControlFlowResidualAnalysis.OrphansAnalysis(residual,
-					ma.allShadows,
+					allShadows,
 					new JavaFlowInsensitiveAliasing(am));
 //			Map<Shadow,SubsetDate> residuals = ResidualAnalysis.OrphansAnalysis(residual, ma, am);
 
+			SubsetDate unionOfResiduals2;
 
-			if(residuals.values().size() == 0){
+			unionOfResiduals2 = ControlFlowResidualAnalysis.residualsUnion(residuals);
 
-				return new DateFSM(property.propertyName);
+			if(residuals.values().size() == 0 || orphans){
+				return unionOfResiduals2;
 //				actionOnEnd(new DateFSM()); 
 //				return;
 			}
 			else{
-				SubsetDate unionOfResiduals2;
-
-				unionOfResiduals2 = ControlFlowResidualAnalysis.residualsUnion(residuals);
 
 //				System.out.println("After 2nd:");
 //				System.out.println(unionOfResiduals2);
@@ -223,14 +248,54 @@ public class PropertyTransformer extends SceneTransformer{
 				JavaCFGAnalysis cfga = new JavaCFGAnalysis(ma);
 				
 //				residuals = ControlFlowResidualAnalysis.ControlFlowAnalysis(residuals,
-				Map<JavaEvent, Pair<SubsetDate, Set<Event<JavaEvent>>>> residualsAndUsefulEvents = ControlFlowResidualAnalysis.IntraProceduralControlFlowAnalysis(residuals,
-                        ma.allShadows,
-                        cfga,
-                        new JavaFlowSensitiveAliasing());
+
+				Map<JavaEvent, Pair<SubsetDate, Set<Event<JavaEvent>>>> residualsAndUsefulEvents = new HashMap<>();
+
+				//null here is like the 'all events set'
+				//TODO use something else than null
+
+				for(JavaEvent ev : residuals.keySet()){
+					residualsAndUsefulEvents.put(ev, new Pair<>(residuals.get(ev), null));
+				}
+
+				boolean changed;
+
+				boolean firstTime = true;
+				do{
+					changed = false;
+					Map<JavaEvent, Pair<SubsetDate, Set<Event<JavaEvent>>>> residualsAndUsefulEvents1
+							= ControlFlowResidualAnalysis.IntraProceduralControlFlowAnalysis(residualsAndUsefulEvents,
+							allShadows,
+							cfga,
+							new JavaFlowSensitiveAliasing());
+
+					for(JavaEvent ev : residualsAndUsefulEvents1.keySet()){
+						if(residualsAndUsefulEvents.get(ev).first.transitions.size() != (residualsAndUsefulEvents1.get(ev).first.transitions.size())){
+							changed = true;
+							break;
+						}
+
+						//needed since leaving residualsAndUsefulEvents.get(ev).second as null from orphan shadows
+						//TODO make this prettier
+						if(!firstTime && residualsAndUsefulEvents.get(ev).second.size() != residualsAndUsefulEvents1.get(ev).second.size()){
+							changed = true;
+							break;
+						}
+					}
+
+					firstTime = false;
+
+					residualsAndUsefulEvents = residualsAndUsefulEvents1;
+				}while(changed);
 
 				Pair<SubsetDate, Set<Event<JavaEvent>>> union = ControlFlowResidualAnalysis.residualsAndEventsUnionWithoutReductions(residualsAndUsefulEvents);
 
                 eventsToMonitorFor.put(property, union.second);
+
+				///For debugging
+				if(union.first.startingState.label.equals("")){
+					System.out.print("");
+				}
 
                 if(!union.first.neverFails) {
 //					System.out.println("After 3rd:");

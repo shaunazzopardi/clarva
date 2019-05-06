@@ -11,10 +11,10 @@ import java.util.Set;
 
 import clarva.analysis.cfg.CFG;
 import clarva.analysis.cfg.CFGEvent;
-import clarva.java.JavaMethodIdentifier;
 import clarva.java.JavaEvent;
+import clarva.java.JavaMethodIdentifier;
 import clarva.matching.Aliasing;
-import com.google.common.collect.Sets;
+import clarva.matching.MethodIdentifier;
 import fsm.Event;
 import fsm.date.DateFSM;
 import fsm.date.SubsetDate;
@@ -120,7 +120,7 @@ public class ControlFlowResidualAnalysis {
 	}
 
 	public static <St, T extends CFGEvent, S extends JavaMethodIdentifier> Map<T, Pair<SubsetDate, Set<Event<T>>>> IntraProceduralControlFlowAnalysis(
-	        Map<T, SubsetDate> residuals,
+			Map<JavaEvent, Pair<SubsetDate, Set<Event<T>>>> residuals,
             Set<T> allShadows,
             CFGAnalysis<St, T, S> cfga,
             Aliasing<T> aliasing){
@@ -161,21 +161,25 @@ public class ControlFlowResidualAnalysis {
  			if(!includedAlready) allShadowsUpToMustAlias.add(s);
  		}
 
-		residuals = removeEmptyDates(residuals);
+	//	residuals = removeEmptyDates(residuals);
 
  		Map<T, Pair<SubsetDate, Set<Event<T>>>> shadowsToUsefulEventsAndResiduals = new HashMap<>();
 
 		//first iteration should be over compatible shadow sets probably
 		for(T s : allShadowsUpToMustAlias){
+			Map<MethodIdentifier, Pair<SubsetDate, Set<Event<T>>>> map = new HashMap<>();
+
 			//TODO check that before and after are being computed appropriately
 			for(CFG<St, T> approx : wholeProgramCFGApproximations.values()){
-				SubsetDate oldResidual = residuals.get(s);
-				Pair<SubsetDate, Set<Event<T>>> newResidualAndUsefulEvents = cfga.sufficientDATETransitions(s, approx, oldResidual, aliasing);
-//				if(newResidual == null || newResidual.neverFails){
-////					System.out.println("here");
-//					newResidual = cfga.sufficientResidual(s, approx, oldResidual, aliasing);
-//				}
-				if(shadowsToUsefulEventsAndResiduals.containsKey(s)){
+				SubsetDate oldResidual = residuals.get(s).first;
+				Pair<SubsetDate, Set<Event<T>>> newResidualAndUsefulEvents = cfga.sufficientDATETransitionsWithSynch(s, approx, oldResidual, aliasing, residuals.get(s).second);
+
+				map.put(approx.methodID, newResidualAndUsefulEvents);
+			}
+
+			for(Pair<SubsetDate, Set<Event<T>>> newResidualAndUsefulEvents : map.values()) {
+
+				if (shadowsToUsefulEventsAndResiduals.containsKey(s) && newResidualAndUsefulEvents.second != null) {
 					Pair<SubsetDate, Set<Event<T>>> oldSubsetDateSetPair = shadowsToUsefulEventsAndResiduals.get(s);
 
 					SubsetDate newDate = newResidualAndUsefulEvents.first;
@@ -185,15 +189,11 @@ public class ControlFlowResidualAnalysis {
 					newUsefulEvents.addAll(oldSubsetDateSetPair.second);
 
 					shadowsToUsefulEventsAndResiduals.put(s, new Pair<>(newDate, newUsefulEvents));
-				}
-				else{
+				} else {
 					shadowsToUsefulEventsAndResiduals.put(s, newResidualAndUsefulEvents);
 				}
-
-//				if(!residuals.toString().toLowerCase().contains("property")){
-//					System.out.println("here");
-//				}
 			}
+
 		}
 //		residuals = removeEmptyDates(residuals);
 //

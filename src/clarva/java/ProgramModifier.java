@@ -2,15 +2,12 @@ package clarva.java;
 
 import com.google.common.collect.Sets;
 import com.google.common.io.Files;
-import compiler.ParseException;
 import fsm.Event;
-import fsm.date.DateFSM;
 import soot.*;
 import soot.jimple.*;
 import soot.jimple.internal.*;
 import soot.options.Options;
 import soot.util.Chain;
-import soot.util.Cons;
 import soot.util.JasminOutputStream;
 
 import java.io.*;
@@ -81,14 +78,16 @@ public class ProgramModifier {
 //		return true;
 //	}
 
-	static SootClass eventClass;
+	static SootClass monitoredEventClass = null;
 
 	public static void createInstrumentedActionsClass() {
-		eventClass = new SootClass("EventMonitoredInterface", Modifier.PUBLIC);
+		if(monitoredEventClass == null) {
+			monitoredEventClass = new SootClass("EventMonitoredInterface", Modifier.PUBLIC);
 
-		eventClass.setSuperclass(Scene.v().getSootClass("java.lang.Object"));
+			monitoredEventClass.setSuperclass(Scene.v().getSootClass("java.lang.Object"));
 
-		Scene.v().addClass(eventClass);
+			Scene.v().addClass(monitoredEventClass);
+		}
 	}
 
 
@@ -188,7 +187,7 @@ public class ProgramModifier {
 				inputTypes.add(args.get(i).getType());
 			}
 
-			if (!eventClass.declaresMethod(newMethodName, inputTypes)) {
+			if (!monitoredEventClass.declaresMethod(newMethodName, inputTypes)) {
 				SootMethod method = new SootMethod(newMethodName,
 						inputTypes,
 						returnType, Modifier.STATIC | Modifier.PUBLIC);
@@ -242,10 +241,10 @@ public class ProgramModifier {
 					body.getUnits().add(Jimple.v().newReturnStmt(newLocal));
 				}
 
-				eventClass.addMethod(method);
+				monitoredEventClass.addMethod(method);
 			}
 
-			JStaticInvokeExpr jStaticInvokeExpr = new JStaticInvokeExpr(eventClass.getMethod(newMethodName, inputTypes).makeRef(), args);
+			JStaticInvokeExpr jStaticInvokeExpr = new JStaticInvokeExpr(monitoredEventClass.getMethod(newMethodName, inputTypes).makeRef(), args);
 
 			return jStaticInvokeExpr;
 
@@ -276,7 +275,7 @@ public class ProgramModifier {
 //				inputTypes.add(args.get(i).getType());
 //			}
 
-//			if (!eventClass.declaresMethod(newMethodName, inputTypes)) {
+//			if (!monitoredEventClass.declaresMethod(newMethodName, inputTypes)) {
 //				SootMethod method = new SootMethod(newMethodName,
 //						inputTypes,
 //						returnType, Modifier.STATIC | Modifier.PUBLIC);
@@ -297,13 +296,13 @@ public class ProgramModifier {
 //					body.getUnits().add(Jimple.v().newReturnStmt(invoke));
 //				}
 //
-//				eventClass.addMethod(method);
+//				monitoredEventClass.addMethod(method);
 //			}
 
 //			List<Value> newArgs = new ArrayList<>();
 //			newArgs.addAll(args);
 //
-//			JStaticInvokeExpr jStaticInvokeExpr = new JStaticInvokeExpr(eventClass.getMethod(newMethodName, inputTypes).makeRef(), newArgs);
+//			JStaticInvokeExpr jStaticInvokeExpr = new JStaticInvokeExpr(monitoredEventClass.getMethod(newMethodName, inputTypes).makeRef(), newArgs);
 //
 //			return jStaticInvokeExpr;
 
@@ -313,17 +312,65 @@ public class ProgramModifier {
 	}
 
 	public static void printEventClass() throws IOException {
-		String fileName = SourceLocator.v().getFileNameFor(eventClass, Options.output_format_class);
+		String fileName = SourceLocator.v().getFileNameFor(monitoredEventClass, Options.output_format_class);
 
 		Files.createParentDirs(new File(fileName));
 
 		OutputStream streamOut = new JasminOutputStream(new FileOutputStream(fileName));
 		PrintWriter writerOut = new PrintWriter(new OutputStreamWriter(streamOut));
 
-		JasminClass jasminClass = new soot.jimple.JasminClass(eventClass);
+		JasminClass jasminClass = new soot.jimple.JasminClass(monitoredEventClass);
 		jasminClass.print(writerOut);
 		writerOut.flush();
 		streamOut.close();
 
+	}
+
+	//TODO finish this method
+	//this is to be used to add a boolean variable to a method's parameters,
+	//which denotes whether events activated during its execution should be monitored for or not
+	//this is to be used to turn off instrumentation of a method depending where it is called from
+	public static void addMonitoringCondition(SootMethod method){
+		List<Type> parameterTypes = method.getParameterTypes();
+		parameterTypes.add(BooleanType.v());
+
+		Body body = method.getActiveBody();
+
+		String monitoredFlagVar = getNonUsedLocalName(body.getLocals());
+
+		Local monitoredFlagLocal = Jimple.v().newLocal(monitoredFlagVar, BooleanType.v());
+
+		body.getLocals().add(monitoredFlagLocal);
+		body.getUnits().add(Jimple.v().newIdentityStmt(monitoredFlagLocal,
+				Jimple.v().newParameterRef(BooleanType.v(), parameterTypes.size())));
+
+		UnitPatchingChain units = body.getUnits();
+
+		for(Unit unit : units){
+			//check if unit matches an event
+
+			//check if unit calls a method
+			//if yes then transform method to have
+		}
+	}
+
+	public static String getNonUsedLocalName(Collection<Local> locals){
+		int varNo = 1000;
+		String var = "rr";
+
+		boolean used = true;
+
+		do{
+			varNo++;
+			for(Local local : locals){
+				if(local.getName().equals(var + varNo)){
+					used = true;
+					continue;
+				}
+			}
+
+		}while(used);
+
+		return var + varNo;
 	}
 }
