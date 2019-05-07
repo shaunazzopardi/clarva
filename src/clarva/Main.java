@@ -77,9 +77,11 @@ public class Main {
 //	    Options.v().setPhaseOption("jtp", "enabled:true");
 	    Options.v().setPhaseOption("jb", "use-original-names:true");
 
-		  Options.v().setPhaseOption("cg.cha", "enabled:true");
-//		  Options.v().setPhaseOption("cg.spark", "enabled:true");
-//		Options.v().setPhaseOption("cg.spark", "on-fly-cg:false");
+//		  Options.v().setPhaseOption("cg.cha", "enabled:true");
+
+		  Options.v().setPhaseOption("cg.spark", "enabled:true");
+		Options.v().setPhaseOption("cg.spark", "on-fly-cg:false");
+//		Options.v().setPhaseOption("cg.spark", "vta:true");
 //		  Options.v().setPhaseOption("cg.spark", "verbose:true");
 
 //		Options.v().setPhaseOption("cg.spark", "rta:true");
@@ -150,6 +152,9 @@ public class Main {
 	    SootMethod methodByName = c.getMethodByName("main");
 	    List<SootMethod> ePoints = new LinkedList<>();
 	    ePoints.add(methodByName);
+		  SootClass cc = Scene.v().forceResolve("main.java.paymentapp.UserUI", SootClass.BODIES);
+
+		  ePoints.add(cc.getMethodByName("run"));
 	    Scene.v().setEntryPoints(ePoints);
 	    // Add a transformer
 	    PackManager.v().getPack("wjtp")

@@ -5,6 +5,7 @@ import java.util.*;
 
 import clarva.analysis.ControlFlowResidualAnalysis;
 
+import clarva.analysis.cfg.CFG;
 import clarva.analysis.cfg.CFGEvent;
 import clarva.matching.Aliasing;
 import com.google.common.collect.Sets;
@@ -135,6 +136,12 @@ public class PropertyTransformer extends SceneTransformer{
 
 				global.properties.add(residual);
 
+				try {
+					ProgramModifier.instrument();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+
 			} else{
 				System.out.println(residual.propertyName + " is always satisfied!");
 			}
@@ -258,6 +265,24 @@ public class PropertyTransformer extends SceneTransformer{
 					residualsAndUsefulEvents.put(ev, new Pair<>(residuals.get(ev), null));
 				}
 
+				Map<JavaMethodIdentifier, Set<JavaEvent>> methodShadows = new HashMap<>();
+
+				//methodFSM not keeping only reachable methods
+				for (JavaMethodIdentifier method : cfga.methodCFG.keySet()) {
+					if (method.toString().contains("transactionMenu")) {
+						System.out.print("");
+					}
+
+					//important to do this before wholeprogram CFG is generated
+					//TODO wholeprogramCFGs should not edit methodCFG but create new CFG
+					//as it is cfga.methodCFGToWholeProgramCFG modifies the values of methodCFG
+					Set<JavaEvent> localMethodShadows = new HashSet<>();
+					cfga.methodCFG.get(method).alphabet.forEach(ev -> localMethodShadows.add(ev.label));
+					localMethodShadows.removeIf(ev -> ev.epsilon);
+					methodShadows.put(method, localMethodShadows);
+				}
+
+				Aliasing aliasing = new JavaFlowSensitiveAliasing();
 				boolean changed;
 
 				boolean firstTime = true;
@@ -267,7 +292,8 @@ public class PropertyTransformer extends SceneTransformer{
 							= ControlFlowResidualAnalysis.IntraProceduralControlFlowAnalysis(residualsAndUsefulEvents,
 							allShadows,
 							cfga,
-							new JavaFlowSensitiveAliasing());
+							aliasing,
+							methodShadows);
 
 					for(JavaEvent ev : residualsAndUsefulEvents1.keySet()){
 						if(residualsAndUsefulEvents.get(ev).first.transitions.size() != (residualsAndUsefulEvents1.get(ev).first.transitions.size())){
@@ -288,7 +314,7 @@ public class PropertyTransformer extends SceneTransformer{
 					residualsAndUsefulEvents = residualsAndUsefulEvents1;
 				}while(changed);
 
-				Pair<SubsetDate, Set<Event<JavaEvent>>> union = ControlFlowResidualAnalysis.residualsAndEventsUnionWithoutReductions(residualsAndUsefulEvents);
+				Pair<SubsetDate, Set<Event<JavaEvent>>> union = ControlFlowResidualAnalysis.residualsAndEventsUnionWithoutReductions(property, aliasing, residualsAndUsefulEvents);
 
                 eventsToMonitorFor.put(property, union.second);
 

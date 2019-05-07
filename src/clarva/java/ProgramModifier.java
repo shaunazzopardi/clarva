@@ -18,65 +18,65 @@ public class ProgramModifier {
 	//TODO implement this.
 	// Maybe create monitored versions of functions in larva monitored system
 	//	and have any instrumented calls use those functions
-//	public static boolean createUnmonitoredCopy(SootMethod method) throws IOException {
-//
-//		SootClass declaringClass = method.getDeclaringClass();
-//
-//		SootMethod monitoredMethod = new SootMethod(method.getName() + "Monitored", method.getParameterTypes(), method.getReturnType());
-//
-//		JimpleBody body = Jimple.v().newBody(monitoredMethod);
-//		monitoredMethod.setActiveBody(body);
-//
-//		declaringClass.addMethod(monitoredMethod);
-//		monitoredMethod.setDeclaringClass(declaringClass);
-//
-//		Local arg = Jimple.v().newLocal("l0", method.getReturnType());
-//		body.getLocals().add(arg);
-//
-//		if(!declaringClass.isStatic()
-//				&& !method.isStatic()){
-//
-//			ThisRef thisRef = new ThisRef(method.getDeclaringClass().getType());
-//
-//			Local thisLocal = Jimple.v().newLocal("ths", thisRef.getType());
-//			body.getLocals().add(thisLocal);
-//
-//			body.getUnits().add(Jimple.v().newIdentityStmt(thisLocal,
-//			            Jimple.v().newThisRef((RefType)thisRef.getType())));
-//
-//		    body.getUnits().add(Jimple.v().newInvokeStmt
-//		    	        (Jimple.v().newVirtualInvokeExpr
-//		    	           (thisLocal, method.makeRef(), body.getParameterLocals())));
-//
-//
-//
-//		//method.setName(method.getName() + "Unmonitored");
-//		}
-//		else{
-//		    body.getUnits().add(Jimple.v().newInvokeStmt
-//		    	        (Jimple.v().newStaticInvokeExpr
-//		    	           (method.makeRef(), body.getParameterLocals())));
-//		}
-//
-//		if(method.getReturnType().toString() != "void"){
-//			body.getUnits().add(Jimple.v().newReturnStmt(arg));
-//		}
-//
-//
-//		String fileName = SourceLocator.v()
-//				.getFileNameFor(declaringClass, Options.output_format_class);
-//		OutputStream streamOut = new JasminOutputStream(
-//				new FileOutputStream(fileName));
-//		PrintWriter writerOut = new PrintWriter(
-//				new OutputStreamWriter(streamOut));
-//		AbstractJasminClass jasminClass = new soot.baf.JasminClass(declaringClass);
-//		jasminClass.print(writerOut);
-//		writerOut.flush();
-//		streamOut.close();
-//
-//
-//		return true;
-//	}
+	public static boolean dynamicallyInstrumentedMethod(SootMethod method) throws IOException {
+
+		SootClass declaringClass = method.getDeclaringClass();
+
+		SootMethod monitoredMethod = new SootMethod(method.getName() + "Monitored", method.getParameterTypes(), method.getReturnType());
+
+		JimpleBody body = Jimple.v().newBody(monitoredMethod);
+		monitoredMethod.setActiveBody(body);
+
+		declaringClass.addMethod(monitoredMethod);
+		monitoredMethod.setDeclaringClass(declaringClass);
+
+		Local arg = Jimple.v().newLocal("l0", method.getReturnType());
+		body.getLocals().add(arg);
+
+		if(!declaringClass.isStatic()
+				&& !method.isStatic()){
+
+			ThisRef thisRef = new ThisRef(method.getDeclaringClass().getType());
+
+			Local thisLocal = Jimple.v().newLocal("ths", thisRef.getType());
+			body.getLocals().add(thisLocal);
+
+			body.getUnits().add(Jimple.v().newIdentityStmt(thisLocal,
+			            Jimple.v().newThisRef((RefType)thisRef.getType())));
+
+		    body.getUnits().add(Jimple.v().newInvokeStmt
+		    	        (Jimple.v().newVirtualInvokeExpr
+		    	           (thisLocal, method.makeRef(), body.getParameterLocals())));
+
+
+
+		//method.setName(method.getName() + "Unmonitored");
+		}
+		else{
+		    body.getUnits().add(Jimple.v().newInvokeStmt
+		    	        (Jimple.v().newStaticInvokeExpr
+		    	           (method.makeRef(), body.getParameterLocals())));
+		}
+
+		if(method.getReturnType().toString() != "void"){
+			body.getUnits().add(Jimple.v().newReturnStmt(arg));
+		}
+
+
+		String fileName = SourceLocator.v()
+				.getFileNameFor(declaringClass, Options.output_format_class);
+		OutputStream streamOut = new JasminOutputStream(
+				new FileOutputStream(fileName));
+		PrintWriter writerOut = new PrintWriter(
+				new OutputStreamWriter(streamOut));
+		AbstractJasminClass jasminClass = new soot.baf.JasminClass(declaringClass);
+		jasminClass.print(writerOut);
+		writerOut.flush();
+		streamOut.close();
+
+
+		return true;
+	}
 
 	static SootClass monitoredEventClass = null;
 
@@ -118,12 +118,12 @@ public class ProgramModifier {
 				if (event.label.unit.equals(stmt)) {
 					if (InvokeStmt.class.isAssignableFrom(stmt.getClass())) {
 
-						InvokeStmt invokeStmt = new JInvokeStmt(callandCreateInstrumentedMethod(stmt.getInvokeExpr(), VoidType.v()));
+						InvokeStmt invokeStmt = new JInvokeStmt(instrumentInvocation(stmt.getInvokeExpr(), VoidType.v()));
 						units.insertBefore(invokeStmt, stmt);
 						units.remove(stmt);
 
 					} else if (AssignStmt.class.isAssignableFrom(stmt.getClass())) {
-						InvokeExpr invokeExpr = callandCreateInstrumentedMethod(stmt.getInvokeExpr(), ((AssignStmt) stmt).getLeftOp().getType());
+						InvokeExpr invokeExpr = instrumentInvocation(stmt.getInvokeExpr(), ((AssignStmt) stmt).getLeftOp().getType());
 						JAssignStmt jAssignStmt = new JAssignStmt(((AssignStmt) stmt).getLeftOp(), invokeExpr);
 						units.insertBefore(jAssignStmt, stmt);
 						units.remove(stmt);
@@ -149,7 +149,7 @@ public class ProgramModifier {
 		printEventClass();
 	}
 
-	public static InvokeExpr callandCreateInstrumentedMethod(InvokeExpr invoke, Type returnType) {
+	public static InvokeExpr instrumentInvocation(InvokeExpr invoke, Type returnType) {
 //		if (AbstractVirtualInvokeExpr.class.isAssignableFrom(invoke.getClass())
 //				|| ) {
 

@@ -1,5 +1,6 @@
 package clarva.java;
 
+import clarva.matching.MethodIdentifier;
 import polyglot.ast.Assign;
 import soot.*;
 import soot.jimple.*;
@@ -13,6 +14,7 @@ import soot.util.queue.QueueReader;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -68,10 +70,12 @@ public class MethodsAnalysis {
 	//public Map<MethodOrMethodContext, Map<String, Value>> shadowBindings;
 //	public Map<InvokeExpr, Local> invokeExprLocals;
 //	public Map<Local, String> localCorrespondingToVariable;
+
+	public Map<MethodIdentifier, Map<MethodIdentifier, Integer>> methodCalls;
 	
 	public MethodsAnalysis(Scene scene, Set<Event<DateLabel>> events){
 //		while(!Scene.v().doneResolving()){}
-		
+
 		CallGraph cg = scene.getCallGraph();
 
 		try{
@@ -265,13 +269,13 @@ public class MethodsAnalysis {
 		CallGraph cg = scene.getCallGraph();
 		
 		//initialize fields
-		Set<InvokeExpr> allMethodCalls = new HashSet<InvokeExpr>();
-		
+
 	//	methodObject = new HashMap<InvokeExpr, Value>();
 	//	methodArgs = new HashMap<InvokeExpr, List<Value>>();
 		
 //		shadowBindings = new HashMap<Shadow, List<Map<String, Value>>>();
-		
+		Set<InvokeExpr> allMethodCalls = new HashSet<InvokeExpr>();
+
 		invokeExprInStmt = new HashMap<InvokeExpr, Stmt>();
 		methodInvokedWhere = new HashMap<MethodOrMethodContext, List<InvokeExpr>>();		
 		invokedMethod = new HashMap<InvokeExpr, MethodOrMethodContext>();		
@@ -286,7 +290,7 @@ public class MethodsAnalysis {
 				edge = edges.next();
 				
 				//get edge source statement (the 
-				Stmt sourceStatement = edge.srcStmt(); 
+				Stmt sourceStatement = edge.srcStmt();
 			//	int sourceLineNumber = sourceStatement.getJavaSourceStartLineNumber();
 
 			//FOR DEBUGGING
@@ -296,131 +300,154 @@ public class MethodsAnalysis {
 				}
 			} catch(Exception e){
 					System.out.print("");
-				}
+			}
+
 				if(sourceStatement != null && sourceStatement.containsInvokeExpr()){
 
 					InvokeExpr expr = sourceStatement.getInvokeExpr();
 					//if(expr instanceof InstanceInvokeExpr){
-					if(expr instanceof InvokeExpr){
-						allMethodCalls.add(expr);
-
-						unitsToInvokeExpr.put(edge.srcUnit(), expr);
-						
-						invokeExprInMethod.put(expr, edge.getSrc());
-
-						invokeExprInStmt.put(expr, sourceStatement);
-						
-						invokedMethod.put(expr, expr.getMethodRef().resolve());
-						
-						if(methodInvokedWhere.containsKey(expr.getMethodRef().resolve())){
-							methodInvokedWhere.get(expr.getMethodRef().resolve()).add(expr);
-						}
-						else{
-							
-							List<InvokeExpr> invoked = new ArrayList<InvokeExpr>();
-							invoked.add(expr);
-							
-							methodInvokedWhere.put(expr.getMethodRef().resolve(), invoked);
-						}
-
-						//for each matching DateLabel
-						//better to turn all these to match method calls rather than dateEvent<datelabel>
-						List<MethodCall> matchingMethodCalls = sootMethodToDateEvents.get(invokedMethod.get(expr));
-
-						if(matchingMethodCalls != null){
-
-							//TODO make sure all actual invoke exprs are being associated with a for each var
-
-							List<Value> args = new ArrayList<>();
-							Value classObject = null;
-
-							if (AbstractVirtualInvokeExpr.class.isAssignableFrom(expr.getClass())) {
-
-								AbstractVirtualInvokeExpr invokeExpr = (AbstractVirtualInvokeExpr) expr;
-								classObject = ((InstanceInvokeExpr)expr).getBase();
-
-								args.addAll(invokeExpr.getArgs());
-
-							} else if (AbstractInstanceInvokeExpr.class.isAssignableFrom(expr.getClass())) {
-
-								AbstractInstanceInvokeExpr invokeExpr = (AbstractInstanceInvokeExpr) expr;
-								classObject = ((InstanceInvokeExpr)expr).getBase();
-
-								args.addAll(invokeExpr.getArgs());
-							} else {//(AbstractStaticInvokeExpr.class.isAssignableFrom(invoke.getClass())){
-								args.addAll(expr.getArgs());
-							}
-
-
-
-							if(args == null){
-								args = new ArrayList<Value>();
-							}
-							
-							List<JavaEvent> shadows = new ArrayList<JavaEvent>();
-							
-							this.unitShadows.put(edge.srcUnit(), shadows);
-							
-							for(int i = 0; i < matchingMethodCalls.size() ; i++){
-						//		List<Map<String, Value>> listOfForEachVarsValue = new ArrayList<Map<String, Value>>();
-								
-								Map<String, Value> forEachVarValue = new HashMap<String, Value>();
-
-								JavaEvent shadow = new JavaEvent(expr, sourceStatement, matchingMethodCalls.get(i), forEachVarValue);
-							//	shadowBindings.put(shadow, listOfForEachVarsValue);
-								shadows.add(shadow);
-								this.allShadows.add(shadow);
-								MethodCall current = matchingMethodCalls.get(i);								
-								
-							//	listOfForEachVarsValue.add(forEachVarValue);
-
-								if(current.toString().contains("addLeaf")){
-									System.out.print("");
-									//TODO check why for MufinB1 benchmark addleaf method not being matched with return variable
-								}
-
-
-
-								for(String forEachVar : current.forEachVariables){
-									if(classObject != null
-										&& current.whereMap.get(forEachVar).equals(current.objectIdentifier)){
-
-										forEachVarValue.put(forEachVar, classObject);
-									}
-									else if(current.whereMap.get(forEachVar).equals(current.returnIdentifier)
-											&& AssignStmt.class.isAssignableFrom(sourceStatement.getClass())){
-											//&& current.isConstructor){
-
-										forEachVarValue.put(forEachVar, ((AssignStmt) sourceStatement).getLeftOp());
-									}
-									else{
-
-										for(int j = 0; j < current.argIdentifiers.size(); j++){
-											if(current.whereMap.get(forEachVar).equals(current.argIdentifiers.get(j))){
-												forEachVarValue.put(forEachVar, args.get(j));
-											}
-										}
-									}
-								}
-								
-	//							//sanity check
-	//							if(forEachVarValue.keySet().size() != current.forEachVariables.size()){
-	//								
-	//							}
-						}
-					}
-//						methodObject.put(expr, classObject);
-//						methodArgs.put(expr, args);
-						
-						
+					if(expr instanceof InvokeExpr) {
+						allMethodCalls.addAll(populateFieldsForInvokeExpr(sourceStatement, edge.srcUnit(), edge.getSrc(), expr));
 					}
 				}
 			//}
 		}
-		
-		
+
+		for(MethodOrMethodContext method : reachableMethods){
+			if(method.method().hasActiveBody()) {
+
+				for (Unit currentUnit : method.method().getActiveBody().getUnits()) {
+					if(Stmt.class.isAssignableFrom(currentUnit.getClass())){
+						Stmt stmt = (Stmt) currentUnit;
+
+						if(stmt.containsInvokeExpr()){
+							this.populateFieldsForInvokeExpr(stmt, currentUnit, method.method(), stmt.getInvokeExpr());
+						}
+					}
+
+				}
+			}
+		}
+
 		return allMethodCalls;
 	}
+
+	public Set<InvokeExpr> populateFieldsForInvokeExpr(Stmt invocationStatement, Unit invocationUnit, MethodOrMethodContext invokingMethod, InvokeExpr expr){
+		Set<InvokeExpr> allMethodCalls = new HashSet<InvokeExpr>();
+
+		allMethodCalls.add(expr);
+
+		unitsToInvokeExpr.put(invocationUnit, expr);
+
+		invokeExprInMethod.put(expr, invokingMethod);
+
+		invokeExprInStmt.put(expr, invocationStatement);
+
+		invokedMethod.put(expr, expr.getMethodRef().resolve());
+
+		if(methodInvokedWhere.containsKey(expr.getMethodRef().resolve())){
+			methodInvokedWhere.get(expr.getMethodRef().resolve()).add(expr);
+		}
+		else{
+
+			List<InvokeExpr> invoked = new ArrayList<InvokeExpr>();
+			invoked.add(expr);
+
+			methodInvokedWhere.put(expr.getMethodRef().resolve(), invoked);
+		}
+
+		//for each matching DateLabel
+		//better to turn all these to match method calls rather than dateEvent<datelabel>
+		List<MethodCall> matchingMethodCalls = sootMethodToDateEvents.get(invokedMethod.get(expr));
+
+		if(matchingMethodCalls != null){
+
+			//TODO make sure all actual invoke exprs are being associated with a for each var
+
+			List<Value> args = new ArrayList<>();
+			Value classObject = null;
+
+			if (AbstractVirtualInvokeExpr.class.isAssignableFrom(expr.getClass())) {
+
+				AbstractVirtualInvokeExpr invokeExpr = (AbstractVirtualInvokeExpr) expr;
+				classObject = ((InstanceInvokeExpr)expr).getBase();
+
+				args.addAll(invokeExpr.getArgs());
+
+			} else if (AbstractInstanceInvokeExpr.class.isAssignableFrom(expr.getClass())) {
+
+				AbstractInstanceInvokeExpr invokeExpr = (AbstractInstanceInvokeExpr) expr;
+				classObject = ((InstanceInvokeExpr)expr).getBase();
+
+				args.addAll(invokeExpr.getArgs());
+			} else {//(AbstractStaticInvokeExpr.class.isAssignableFrom(invoke.getClass())){
+				args.addAll(expr.getArgs());
+			}
+
+
+
+			if(args == null){
+				args = new ArrayList<Value>();
+			}
+
+			List<JavaEvent> shadows = new ArrayList<JavaEvent>();
+
+			this.unitShadows.put(invocationUnit, shadows);
+
+			for(int i = 0; i < matchingMethodCalls.size() ; i++){
+				//		List<Map<String, Value>> listOfForEachVarsValue = new ArrayList<Map<String, Value>>();
+
+				Map<String, Value> forEachVarValue = new HashMap<String, Value>();
+
+				JavaEvent shadow = new JavaEvent(expr, invocationStatement, matchingMethodCalls.get(i), forEachVarValue);
+				//	shadowBindings.put(shadow, listOfForEachVarsValue);
+				shadows.add(shadow);
+				this.allShadows.add(shadow);
+				MethodCall current = matchingMethodCalls.get(i);
+
+				//	listOfForEachVarsValue.add(forEachVarValue);
+
+				if(current.toString().contains("addLeaf")){
+					System.out.print("");
+					//TODO check why for MufinB1 benchmark addleaf method not being matched with return variable
+				}
+
+
+
+				for(String forEachVar : current.forEachVariables){
+					if(classObject != null
+							&& current.whereMap.get(forEachVar).equals(current.objectIdentifier)){
+
+						forEachVarValue.put(forEachVar, classObject);
+					}
+					else if(current.whereMap.get(forEachVar).equals(current.returnIdentifier)
+							&& AssignStmt.class.isAssignableFrom(invocationStatement.getClass())){
+						//&& current.isConstructor){
+
+						forEachVarValue.put(forEachVar, ((AssignStmt) invocationStatement).getLeftOp());
+					}
+					else{
+
+						for(int j = 0; j < current.argIdentifiers.size(); j++){
+							if(current.whereMap.get(forEachVar).equals(current.argIdentifiers.get(j))){
+								forEachVarValue.put(forEachVar, args.get(j));
+							}
+						}
+					}
+				}
+
+				//							//sanity check
+				//							if(forEachVarValue.keySet().size() != current.forEachVariables.size()){
+				//
+				//							}
+			}
+		}
+//						methodObject.put(expr, classObject);
+//						methodArgs.put(expr, args);
+
+		return allMethodCalls;
+	}
+
 	
 	public boolean before(MethodCall event, MethodCall otherEvent){
 		if(event.name == otherEvent.name

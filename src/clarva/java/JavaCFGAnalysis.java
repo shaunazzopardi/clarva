@@ -15,15 +15,12 @@ import fsm.date.events.ChannelEvent;
 import fsm.date.events.ClockEvent;
 import fsm.date.events.DateEvent;
 import fsm.helper.Pair;
-import soot.Local;
 import soot.MethodOrMethodContext;
 import soot.Scene;
 import soot.Unit;
 import soot.jimple.InvokeExpr;
 import soot.jimple.Stmt;
 import soot.jimple.internal.JNopStmt;
-import soot.jimple.toolkits.annotation.logic.Loop;
-import soot.jimple.toolkits.annotation.logic.LoopFinder;
 import soot.jimple.toolkits.callgraph.CallGraph;
 import soot.jimple.toolkits.callgraph.Edge;
 import soot.jimple.toolkits.pointer.LocalMustAliasAnalysis;
@@ -132,7 +129,7 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
         }
 
         this.tagShadowsWithBindingRepresentatives();
-        transitivelyCalling();
+//        generateMethodCallGraph();
         shadowsOutsideCall();
 
         cfgAnalysis = this;
@@ -223,7 +220,7 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
     }
 
     public void createCFG(JavaMethodIdentifier method) {
-        if(method.toString().contains("loggedInMenu")){
+        if(method.toString().contains("transactionGreylistedMenu")){
             System.out.print("");
         }
 
@@ -248,6 +245,11 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
             while (unitIterator.hasNext()) {
                 currentUnit = unitIterator.next();
                 statementCalledBy.put(currentUnit, method);
+
+                if(currentUnit.toString().contains("black")){
+                    System.out.print("");
+                }
+
                 //This takes care of not having duplicates states
                 //with the same unit.
                 //Note: The same statements at different points of a program
@@ -260,7 +262,21 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
                     currentUnitState.setInternalFSM(methodCFG.get(JavaMethodIdentifier.get(methodCall)));
                 }
 
-                //If unit is not caught by some action in the property
+//                Moved below to end of MethodsAnalysis.allMethodCalls()
+//
+//                //sometimes invocation statements are not dealt with properly by soot
+//                //here we try do see if an invocation is a shadow, just in case
+//                if (!ma.unitShadows.containsKey(currentUnit)) {
+//                    if(Stmt.class.isAssignableFrom(currentUnit.getClass())){
+//                        Stmt stmt = (Stmt) currentUnit;
+//
+//                        if(stmt.containsInvokeExpr()){
+//                            ma.populateFieldsForInvokeExpr(stmt, currentUnit, method.methodOrMethodContext, stmt.getInvokeExpr());
+//                        }
+//                    }
+//                }
+
+                    //If unit is not caught by some action in the property
                 //then create a transition from each predecessor state
                 //with the empty action to the current unit state
                 //and create a transition from the current unit state
@@ -288,6 +304,11 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
                     List<JavaEvent> shadows = ma.unitShadows.get(currentUnit);
 
                     State<Integer, JavaEvent> source = currentUnitState;
+
+                    if(source.label == 18){
+                        System.out.print("");
+                    }
+
                     for (int i = 0; i < shadows.size() - 1; i++) {
                         State<Integer, JavaEvent> destination = cfg.getOrAddState(new CFGState<>(new JNopStmt()));
                         Event<JavaEvent> event = new Event<JavaEvent>(shadows.get(i));
@@ -506,6 +527,9 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
 //		return after;
     }
 //
+
+
+
     public void shadowsOutsideCall() {
         //get the set of invocations of the methods we are analysing
         List<InvokeExpr> relevantCalls = new ArrayList<InvokeExpr>();
@@ -567,7 +591,7 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
                                 JavaMethodIdentifier methodCalledHere = this.CFGMethod.get(nextState.getInternalFSM());
                                 if (methodCalledHere == null) nextState.setInternalFSM(null);
                                 else if (!methodCalledHere.methodOrMethodContext.equals(method)) {
-                                    before.addAll(this.relevantShadows(methodCalledHere, callingMethod));// method));
+                                    before.addAll(this.relevantShadows(methodCalledHere, callingMethod).first);// method));
                                 }
                             }
                         }
@@ -605,7 +629,7 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
                             if (methodCalledHere == null) state.setInternalFSM(null);
 
                             else if (!methodCalledHere.methodOrMethodContext.equals(method)) {
-                                after.addAll(this.relevantShadows(methodCalledHere, callingMethod));//method));
+                                after.addAll(this.relevantShadows(methodCalledHere, callingMethod).first);//method));
                                 //								after.addAll(state.getInternalFSM().alphabet);
                                 //
                                 //								for(MethodOrMethodContext methodPossiblyInvoked : this.allMethodsSucceeding.get(methodCalledHere)){
@@ -652,15 +676,18 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
         }
 
     }
-//
+
+
     public Pair<Set<Event<JavaEvent>>, Set<Event<JavaEvent>>> shadowsBeforeAndAfter(JavaMethodIdentifier method) {
         Set<Event<JavaEvent>> before = new HashSet<>();
         Set<Event<JavaEvent>> after = new HashSet<>();
 
         Pair<Set<Event<JavaEvent>>, Set<Event<JavaEvent>>> beforeAfter = new Pair<>(before, after);
 
-        if (ma.methodInvokedWhere.get(method.methodOrMethodContext) != null) {
-            for (InvokeExpr invokeExpr : ma.methodInvokedWhere.get(method.methodOrMethodContext)) {
+        List<InvokeExpr> invocations = ma.methodInvokedWhere.get(method.methodOrMethodContext);
+
+        if (invocations != null) {
+            for (InvokeExpr invokeExpr : invocations) {
                 before.addAll(this.shadowsBeforeCall.get(invokeExpr));
                 after.addAll(this.shadowsAfterCall.get(invokeExpr));
             }

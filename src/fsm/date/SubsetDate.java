@@ -133,6 +133,10 @@ public class SubsetDate extends DateFSM{
 
 	}
 
+	public SubsetDate(DateFSM parent, final Collection<Transition<String,DateLabel>> transitionsToKeep){
+		this(parent, transitionsToKeep, new HashMap<>(), true);
+	}
+
 	public SubsetDate(DateFSM parent, final Collection<Transition<String,DateLabel>> transitionsToKeep, Map<String,Set<String>> methodsPossibleAtStates){
 		this(parent, transitionsToKeep, methodsPossibleAtStates, true);
 	}
@@ -163,7 +167,11 @@ public class SubsetDate extends DateFSM{
 		});
 
 		for(String label : this.stateHoareTripleMethod.keySet()){
-			this.stateHoareTripleMethod.get(label).retainAll(methodsPossibleAtStates.get(label));
+			if(methodsPossibleAtStates.containsKey(label)) {
+				this.stateHoareTripleMethod.get(label).retainAll(methodsPossibleAtStates.get(label));
+			} else{
+				this.stateHoareTripleMethod.get(label).clear();
+			}
 		}
 
 		if(removeUnreachablePart) {

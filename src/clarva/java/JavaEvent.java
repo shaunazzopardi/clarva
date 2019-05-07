@@ -122,6 +122,9 @@ public class JavaEvent extends CFGEvent {
 			s.inferBinding(thisCallingMethod, JavaCFGAnalysis.cfgAnalysis.methodMustAlias.get(thisCallingMethodID), JavaCFGAnalysis.cfgAnalysis.methodMustNotAlias.get(thisCallingMethodID));
 		}
 
+		if(this.equals(s)){
+			return true;
+		}
 
 
 		//if shadows are in same method
@@ -131,10 +134,20 @@ public class JavaEvent extends CFGEvent {
 					if(s.objectBinding.get(var) == null
 							|| this.objectBinding.get(var) == null) continue;
 
+					if(s.objectBinding.get(var).equals(this.objectBinding.get(var))){
+						continue;
+					}
 
 					if(s.objectBinding.get(var).first != null
 							&& this.objectBinding.get(var).first != null){
-						if(s.objectBinding.get(var).first.mayNotAlias(this.objectBinding.get(var).first)){
+
+						if(s.objectBinding.get(var).first.equals(this.objectBinding.get(var).first)){
+							continue;
+						}
+
+						//since analysis is local/intraprocedural
+						if(s.callingMethod.equals(this.callingMethod)
+								&& s.objectBinding.get(var).first.mayNotAlias(this.objectBinding.get(var).first)){
 							return false;
 						}
 
@@ -162,7 +175,7 @@ public class JavaEvent extends CFGEvent {
 									if(AnySubType.class.isAssignableFrom(type2.getClass())){
 										type2Here = ((AnySubType) type2).getBase();
 									} else{
-										type2Here = type1;
+										type2Here = type2;
 									}
 
 									if(RefType.class.isAssignableFrom(type1Here.getClass())
@@ -209,7 +222,7 @@ public class JavaEvent extends CFGEvent {
 									if(AnySubType.class.isAssignableFrom(type2.getClass())){
 										type2Here = ((AnySubType) type2).getBase();
 									} else{
-										type2Here = type1;
+										type2Here = type2;
 									}
 
 									if(RefType.class.isAssignableFrom(type1Here.getClass())
@@ -255,7 +268,7 @@ public class JavaEvent extends CFGEvent {
 									if(AnySubType.class.isAssignableFrom(type2.getClass())){
 										type2Here = ((AnySubType) type2).getBase();
 									} else{
-										type2Here = type1;
+										type2Here = type2;
 									}
 
 									if(RefType.class.isAssignableFrom(type1Here.getClass())
@@ -271,7 +284,8 @@ public class JavaEvent extends CFGEvent {
 								}
 							}
 						}
-					} else{
+					} else if(s.objectBinding.get(var).second != null
+									&& this.objectBinding.get(var).second != null){
 						if(s.callingMethod.equals(this.callingMethod)
 								&& !this.objectBinding.get(var).second.hasNonEmptyIntersection(s.objectBinding.get(var).second)){
 							return false;
@@ -279,6 +293,7 @@ public class JavaEvent extends CFGEvent {
 
 						{
 							Set<Type> types1 =  new HashSet<>(this.objectBinding.get(var).second.possibleTypes());
+
 
 							Set<Type> types2 = s.objectBinding.get(var).second.possibleTypes();
 
@@ -297,7 +312,7 @@ public class JavaEvent extends CFGEvent {
 									if(AnySubType.class.isAssignableFrom(type2.getClass())){
 										type2Here = ((AnySubType) type2).getBase();
 									} else{
-										type2Here = type1;
+										type2Here = type2;
 									}
 
 									if(RefType.class.isAssignableFrom(type1Here.getClass())
@@ -345,17 +360,27 @@ public class JavaEvent extends CFGEvent {
 	}
 
 	public boolean mustAlias(JavaEvent s){
+		if(this.equals(s)) return true;
 		if(!this.mayAlias(s)) return false;
 
 		for(String var : this.objectBinding.keySet()){
 			if(s.objectBinding.keySet().contains(var)){
 				if(s.objectBinding.get(var) == null
-						|| this.objectBinding.get(var) == null) return false;
+						|| this.objectBinding.get(var) == null){
+					return false;
+				}
 
 				if(s.objectBinding.get(var).first != null && this.objectBinding.get(var).first != null) {
+
 					if (!s.objectBinding.get(var).first.mustAlias(this.objectBinding.get(var).first)) {
-						return false;
+						if(s.objectBinding.get(var).first.equals(this.objectBinding.get(var).first)){
+							continue;
+						} else{
+							return  false;
+						}
 					}
+
+
 				}
 //				else if(s.objectBinding.get(var).second != null && this.objectBinding.get(var).second != null){
 //					if(s.objectBinding.get(var).second.getClass().equals(FullObjectSet.class)
@@ -371,7 +396,7 @@ public class JavaEvent extends CFGEvent {
 			}
 		}
 		
-		return false;
+		return true;
 	}
 	
 	public boolean equals(Object obj){
@@ -402,6 +427,31 @@ public class JavaEvent extends CFGEvent {
 	public String toString(){
 		if(this.epsilon)
 			return "epsilon";
+		else if(!objectBinding.isEmpty()){
+			String toReturn = this.dateEvent.name + "(";
+
+			for(Pair<InstanceKey, PointsToSet> pair : objectBinding.values()){
+				if(toReturn.charAt(toReturn.length() - 1) != '('){
+					toReturn += ", ";
+				}
+
+				if(pair.first != null){
+					toReturn += pair.first.getLocal().getType().toString();
+				} else{
+					toReturn += "[";
+					for(Type type : pair.second.possibleTypes()){
+						if(toReturn.charAt(toReturn.length() - 1) != '['){
+							toReturn += "|";
+						}
+
+						toReturn += type.toString();
+					}
+					toReturn += "]";
+				}
+			}
+
+			return toReturn + ")";
+		}
 		else return  this.dateEvent.name;//return invocation.toString() + " in " + unit.toString();
 	}
 	

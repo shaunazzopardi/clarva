@@ -340,6 +340,8 @@ public class DateFSM extends FSM<String, DateLabel>{
 		acceptingStates = new HashSet<State<String, DateLabel>>();
 		initial = new HashSet<State<String,DateLabel>>();
 
+		eventUsedInGuardedCommand = fsm.eventUsedInGuardedCommand;
+
 		alphabet = new HashSet<Event<DateLabel>>(fsm.alphabet);
 
 		this.stateHoareTripleMethod = new HashMap<String,Set<String>>(fsm.stateHoareTripleMethod);

@@ -16,10 +16,14 @@ import clarva.java.JavaMethodIdentifier;
 import clarva.matching.Aliasing;
 import clarva.matching.MethodIdentifier;
 import fsm.Event;
+import fsm.Transition;
 import fsm.date.DateFSM;
+import fsm.date.DateLabel;
 import fsm.date.SubsetDate;
 import fsm.date.events.DateEvent;
 import fsm.helper.Pair;
+import jas.Method;
+import soot.util.ArraySet;
 
 public class ControlFlowResidualAnalysis {
 
@@ -120,36 +124,74 @@ public class ControlFlowResidualAnalysis {
 	}
 
 	public static <St, T extends CFGEvent, S extends JavaMethodIdentifier> Map<T, Pair<SubsetDate, Set<Event<T>>>> IntraProceduralControlFlowAnalysis(
-			Map<JavaEvent, Pair<SubsetDate, Set<Event<T>>>> residuals,
-            Set<T> allShadows,
+			Map<T, Pair<SubsetDate, Set<Event<T>>>> residuals,
+			Set<T> allShadows,
             CFGAnalysis<St, T, S> cfga,
-            Aliasing<T> aliasing){
+			Aliasing<T> aliasing,
+			Map<S, Set<T>> methodShadows) {
 
 		Map<S, CFG<St, T>> wholeProgramCFGApproximations = new HashMap<>();
 
 		//methodFSM not keeping only reachable methods
-		for(S method : cfga.methodCFG.keySet()){
-			if(method.toString().contains("main")){
+		for (S method : cfga.methodCFG.keySet()) {
+			if (method.toString().contains("transactionGreylistedMenu")) {
 				System.out.print("");
 			}
+
 			CFG<St, T> wholeProgramCFG = cfga.methodCFGToWholeProgramCFG(method);
 			wholeProgramCFGApproximations.put(method, wholeProgramCFG);
 		}
 
-		List<T> allShadowsUpToMustAlias = new ArrayList<>();
+		Map<T, Pair<SubsetDate, Set<Event<T>>>> localShadowToResidual = new HashMap<>();
+
+		for (CFG<St, T> approx : wholeProgramCFGApproximations.values()) {
+
+			Set<T> shadowsUpToMustAlias = paritionUpToMustAlias(methodShadows.get(approx.methodID), aliasing);
+			shadowsUpToMustAlias.retainAll(residuals.keySet());
+
+			String methodName = approx.methodID.toString();
+			if(methodName.contains("transactionGreylistedMenu")){
+				System.out.print("");
+			}
+
+			for (T shadow : shadowsUpToMustAlias) {
+
+				SubsetDate oldResidual = residuals.get(shadow).first;
+				Pair<SubsetDate, Set<Event<T>>> newResidualAndUsefulEvents = cfga.sufficientDATETransitionsWithSynch(shadow, approx, oldResidual, aliasing, residuals.get(shadow).second);
+
+				localShadowToResidual.put(shadow, newResidualAndUsefulEvents);
+			}
+		}
+
+		return localShadowToResidual;
+	}
+//			}
+
+//		}
+//		residuals = removeEmptyDates(residuals);
+//
+//		//we should also check for transitions/eventsinthecomposition that only ever loop in the same state
+//		Set<Event<T>> toDisable = cfga.canBeDisabled;
+//
+
+//		Pair<Map<T, SubsetDate>, List<Pair<String,String>>> residualsAndPPF = new Pair<>(residuals, cfga.ppfs);
+
+
+	public static <T extends CFGEvent> Set<T> paritionUpToMustAlias(Set<T> shadows, Aliasing aliasing){
+		Set<T> allShadowsUpToMustAlias = new HashSet<>();
 		Map<T, Set<T>> mustAlias = new HashMap<>();
 
- 		for(T s : allShadows){
+ 		for(T s : shadows){
  			Set<T> must = new HashSet<>();
  			mustAlias.put(s, must);
-			for(T ss : allShadows){
+			for(T ss : shadows){
 				if(s == ss || aliasing.mustAlias(s, ss)){
 					must.add(ss);
 				}
 			}
 		}
 
- 		for(T s : allShadows){
+ 		for(T s : shadows){
 
  			boolean includedAlready = false;
  			for(T ss : mustAlias.get(s)){
@@ -161,49 +203,7 @@ public class ControlFlowResidualAnalysis {
  			if(!includedAlready) allShadowsUpToMustAlias.add(s);
  		}
 
-	//	residuals = removeEmptyDates(residuals);
-
- 		Map<T, Pair<SubsetDate, Set<Event<T>>>> shadowsToUsefulEventsAndResiduals = new HashMap<>();
-
-		//first iteration should be over compatible shadow sets probably
-		for(T s : allShadowsUpToMustAlias){
-			Map<MethodIdentifier, Pair<SubsetDate, Set<Event<T>>>> map = new HashMap<>();
-
-			//TODO check that before and after are being computed appropriately
-			for(CFG<St, T> approx : wholeProgramCFGApproximations.values()){
-				SubsetDate oldResidual = residuals.get(s).first;
-				Pair<SubsetDate, Set<Event<T>>> newResidualAndUsefulEvents = cfga.sufficientDATETransitionsWithSynch(s, approx, oldResidual, aliasing, residuals.get(s).second);
-
-				map.put(approx.methodID, newResidualAndUsefulEvents);
-			}
-
-			for(Pair<SubsetDate, Set<Event<T>>> newResidualAndUsefulEvents : map.values()) {
-
-				if (shadowsToUsefulEventsAndResiduals.containsKey(s) && newResidualAndUsefulEvents.second != null) {
-					Pair<SubsetDate, Set<Event<T>>> oldSubsetDateSetPair = shadowsToUsefulEventsAndResiduals.get(s);
-
-					SubsetDate newDate = newResidualAndUsefulEvents.first;
-					newDate.add(oldSubsetDateSetPair.first, false);
-
-					Set<Event<T>> newUsefulEvents = newResidualAndUsefulEvents.second;
-					newUsefulEvents.addAll(oldSubsetDateSetPair.second);
-
-					shadowsToUsefulEventsAndResiduals.put(s, new Pair<>(newDate, newUsefulEvents));
-				} else {
-					shadowsToUsefulEventsAndResiduals.put(s, newResidualAndUsefulEvents);
-				}
-			}
-
-		}
-//		residuals = removeEmptyDates(residuals);
-//
-//		//we should also check for transitions/eventsinthecomposition that only ever loop in the same state
-//		Set<Event<T>> toDisable = cfga.canBeDisabled;
-//
-
-//		Pair<Map<T, SubsetDate>, List<Pair<String,String>>> residualsAndPPF = new Pair<>(residuals, cfga.ppfs);
-
-		return shadowsToUsefulEventsAndResiduals;
+ 		return allShadowsUpToMustAlias;
 	}
 
 	public static <T> SubsetDate residualsUnion(Map<T, SubsetDate> residuals){
@@ -293,36 +293,83 @@ public class ControlFlowResidualAnalysis {
 		}
 	}
 
-	public static <T> Pair<SubsetDate, Set<Event<T>>> residualsAndEventsUnionWithoutReductions(Map<T, Pair<SubsetDate, Set<Event<T>>>> residuals){
+	public static <T extends CFGEvent> Pair<SubsetDate, Set<Event<T>>> residualsAndEventsUnionWithoutReductions(DateFSM date, Aliasing aliasing, Map<T, Pair<SubsetDate, Set<Event<T>>>> residuals){
+
+		Map<T, Pair<SubsetDate, Set<Event<T>>>> cleanResidualSet = new HashMap<>();
+		Set<Set<T>> mayAliasingSets = new HashSet<>();
+
+		for(T shadow : residuals.keySet()) {
+			Set<T> aliasingSet = new HashSet<>();
+
+			if (residuals.get(shadow).first.transitions.size() != 0 && residuals.get(shadow).second.size() != 0) {
+				cleanResidualSet.put(shadow, residuals.get(shadow));
+
+				for (T shadow2 : residuals.keySet()) {
+					residuals.keySet().forEach(t -> {
+						if (aliasing.mayAlias(shadow, t)) {
+							aliasingSet.add(shadow2);
+						}
+					});
+				}
+			}
+
+			mayAliasingSets.add(aliasingSet);
+		}
+
+		Set<SubsetDate> setsOfDates = new HashSet<>();
+		Set<Event<T>> allUsefulEvents = new HashSet<>();
+
+		for(Set<T> aliasingSet : mayAliasingSets){
+			List<Transition<String, DateLabel>> usedTransitions = new ArrayList<>();
+			Set<Event<T>> usedEvents = new HashSet<>();
+
+			Set<T> cleanedAliasingSet = new HashSet<>(aliasingSet);
+			cleanedAliasingSet.retainAll(cleanResidualSet.keySet());
+
+			for(T shadow : cleanedAliasingSet){
+				SubsetDate subsetDate = cleanResidualSet.get(shadow).first;
+
+				usedTransitions.addAll(subsetDate.transitions);
+
+				Set<Event<T>> instrumentedEvents = cleanResidualSet.get(shadow).second;
+
+				usedEvents.addAll(instrumentedEvents);
+			}
+
+			//this automatically performs reachability reduction
+			SubsetDate subsetDate = new SubsetDate(date, usedTransitions);
+			if(!subsetDate.neverFails) {
+				setsOfDates.add(subsetDate);
+				for(Event<T> event : usedEvents){
+					if(!event.label.epsilon) {
+						if (subsetDate.eventUsedInGuardedCommand.values().contains(event.label.dateEvent)) {
+							allUsefulEvents.add(event);
+						}
+					}
+				}
+			}
+		}
+
+
 		if(residuals.size() != 0){
-			Iterator< Pair<SubsetDate, Set<Event<T>>>> dateIterator = residuals.values().iterator();
+			Iterator<SubsetDate> dateIterator = setsOfDates.iterator();
 
 			SubsetDate unionOfResiduals = null;
-			Set<Event<T>> unionOfEvents = null;
 
 			while(dateIterator.hasNext()){
-				Pair<SubsetDate, Set<Event<T>>> current = dateIterator.next();
 
-				SubsetDate date = current.first;
+				SubsetDate currentDate = dateIterator.next();
 				if(unionOfResiduals == null){
-					unionOfResiduals = date;
+					unionOfResiduals = currentDate;
 				}
 				else{
-					unionOfResiduals.add(date, false);
-				}
-
-				Set<Event<T>> cfgEvents = current.second;
-				if(unionOfEvents == null){
-					unionOfEvents = cfgEvents;
-				}
-				else{
-					unionOfEvents.addAll(cfgEvents);
+					unionOfResiduals.add(currentDate, false);
 				}
 			}
 
 			unionOfResiduals.reachabilityReduction();
 
-			return new Pair(unionOfResiduals, unionOfEvents);
+			return new Pair(unionOfResiduals, allUsefulEvents);
 		}
 		else{
 			return null;
