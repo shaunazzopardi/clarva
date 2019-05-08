@@ -10,7 +10,9 @@ cLARVA (= [clara](https://github.com/Sable/clara) + [LARVA](http://www.cs.um.edu
 3. The pointer-analysis employed is SPARK, as provided by Soot, and is configured to ignore Java libraries (to reduce running time). Therefore the soundness of the analysis is limited to properties about the application where the control-flow within calls to Java libraries is irrelevant to the property and to the creation of sound abstraction of the program.
 
 **Input**: 
-1. *language name* of program to be analysed -- currently only *java* is supported;
+1. *mode* of the analysis --
+    (a) *fast*: uses a Class Hierarchy Analysis (CHA) to create a more or less sound callgraph, while ignoring java.*, jdk.*, and sun.* packages, given a quick analysis; and
+    (b) *intensive* uses (SPARK)[https://link.springer.com/content/pdf/10.1007%2F3-540-36579-6_12.pdf, creating a more precise callgraph and pointer-analysis by considering also library files, leading to a longer processing time;
 2. *filePath to* DATE property --- an automata specifying the violating traces of the previous program (through AspectJ notions) with transitions over events (method calls) and conditions encoding data state (see [Larva Manual](http://www.cs.um.edu.mt/svrg/Tools/LARVA/LARVA-manual.pdf) for the syntax of DATEs).
 3. *root directory of* compiled Java program (in eclipse, the bin directory); 
 4. *Canonical name* of the Main class of program (of the form \<package-name\>.\<class-name\>); and
