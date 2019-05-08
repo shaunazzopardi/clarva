@@ -5,7 +5,9 @@ import fsm.helper.Pair;
 
 import java.util.*;
 
-public class FSM<T,S> {
+public class FSM<T, S> {
+
+    public String name;
 
     public Set<State<T, S>> states;
     public Set<State<T, S>> initial;
@@ -22,6 +24,7 @@ public class FSM<T,S> {
     public boolean neverFails;
 
     public FSM() {
+        name = "";
         states = new HashSet<State<T, S>>();
         transitions = new HashSet<Transition<T, S>>();
         finalStates = new HashSet<State<T, S>>();
@@ -73,17 +76,106 @@ public class FSM<T,S> {
         return new fsm.FSM<T, S>(fsm);
     }
 
+    public static <Q, R, T, S> fsm.FSM<Pair<Q, T>, Pair<R, S>> union(fsm.FSM<Q, R> fsm1, fsm.FSM<T, S> fsm2) {
+
+        fsm.FSM<Pair<Q, T>, Pair<R, S>> union = new fsm.FSM<Pair<Q, T>, Pair<R, S>>();
+
+        for (State<Q, R> initial1 : fsm1.initial) {
+            for (State<T, S> initial2 : fsm2.initial) {
+
+                State<Pair<Q, T>, Pair<R, S>> initialState = new State<Pair<Q, T>, Pair<R, S>>(new Pair<Q, T>(initial1.label, initial2.label), null, union);
+                union.addInitialState(initialState);
+
+                Set<State<Pair<Q, T>, Pair<R, S>>> currentStates = new HashSet<State<Pair<Q, T>, Pair<R, S>>>();
+                currentStates.add(initialState);
+
+                boolean addedSomething = true;
+
+                while (addedSomething) {
+                    //Set<State<Pair<Q,T>,Pair<R,S>>> prevStates = new HashSet<State<Pair<Q,T>,Pair<R,S>>>(currentStates);
+
+                    currentStates.clear();
+
+                    addedSomething = false;
+
+                    for (State<Pair<Q, T>, Pair<R, S>> state : currentStates) {
+                        State<Q, R> firstState = fsm1.labelToState.get(state.label.first);
+                        State<T, S> secondState = fsm2.labelToState.get(state.label.second);
+
+                        Set<Event<R>> firstOutgoingEntryValues = firstState.outgoingTransitions.keySet();
+                        Set<Event<S>> secondOutgoingEntryValues = secondState.outgoingTransitions.keySet();
+
+                        //Will the below work? Who knows.
+                        Set<Event> synchronousActions = new HashSet<Event>();
+
+                        if (initial1.label.getClass().asSubclass(initial2.label.getClass()) != null
+                                || initial2.label.getClass().asSubclass(initial1.label.getClass()) != null) {
+                            synchronousActions.addAll(firstOutgoingEntryValues);
+                            synchronousActions.retainAll(secondOutgoingEntryValues);
+
+                            firstOutgoingEntryValues.removeAll(synchronousActions);
+                            secondOutgoingEntryValues.removeAll(synchronousActions);
+                        }
+
+                        for (Event<R> action : firstOutgoingEntryValues) {
+                            for (Q nextFirstStateLabel : firstState.outgoingTransitions.get(action)) {
+                                Pair<Q, T> nextState = new Pair<Q, T>(nextFirstStateLabel, secondState.label);
+                                Event<Pair<R, S>> newAction = new Event<Pair<R, S>>(new Pair<R, S>(action.label, null));
+
+                                union.addTransition(state.label, newAction, nextState);
+                                addedSomething = true;
+                                if (fsm1.finalStates.contains(nextState.first)
+                                        || fsm2.finalStates.contains(nextState.second)) {
+                                    union.addFinalState(union.labelToState.get(nextState));
+                                }
+                            }
+                        }
+
+                        for (Event<S> action : secondOutgoingEntryValues) {
+                            for (T nextSecondStateLabel : secondState.outgoingTransitions.get(action)) {
+                                Pair<Q, T> nextState = new Pair<Q, T>(firstState.label, nextSecondStateLabel);
+
+                                Event<Pair<R, S>> newAction = new Event<Pair<R, S>>(new Pair<R, S>(null, action.label));
+
+                                union.addTransition(state.label, newAction, nextState);
+                                addedSomething = true;
+                                if (fsm1.finalStates.contains(nextState.first)
+                                        || fsm2.finalStates.contains(nextState.second)) {
+                                    union.addFinalState(union.labelToState.get(nextState));
+                                }
+                            }
+                        }
+
+                        for (Event action : synchronousActions) {
+                            for (Q nextFirstStateLabel : firstState.outgoingTransitions.get(action)) {
+                                for (T nextSecondStateLabel : secondState.outgoingTransitions.get(action)) {
+
+                                    Pair<Q, T> nextState = new Pair<Q, T>(nextFirstStateLabel, nextSecondStateLabel);
+                                    Event<Pair<R, S>> newAction = new Event<Pair<R, S>>(new Pair<R, S>((R) action.label, (S) action.label));
+
+                                    union.addTransition(state.label, newAction, nextState);
+                                    addedSomething = true;
+                                    if (fsm1.finalStates.contains(nextState.first)
+                                            || fsm2.finalStates.contains(nextState.second)) {
+                                        union.addFinalState(union.labelToState.get(nextState));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return union;
+    }
+
+    public static <Q, R, T, S> DeterministicFSM<Pair<Set<State<Q, R>>, Set<State<T, S>>>, Pair<R, S>> intersection(fsm.FSM<Q, R> fsm1, fsm.FSM<T, S> fsm2) {
+        return (union(fsm1.complement(), fsm2.complement())).complement();
+    }
+
     public void addTransition(State<T, S> source, Event<S> action, State<T, S> destination) {
         transitions.add(new Transition<T, S>(getOrAddState(source), this.getOrAddState(destination), action));
-        alphabet.add(action);
-    }
-
-    public void addTransition(Transition<T, S> transition) {
-        this.addTransition(transition.source, transition.event, transition.destination);
-    }
-
-    public void addTransition(T source, Event<S> action, T destination) {
-        transitions.add(new Transition<T, S>(getOrAddState(source), getOrAddState(destination), action));
         alphabet.add(action);
     }
 
@@ -115,6 +207,15 @@ public class FSM<T,S> {
 //	}
 //
 
+    public void addTransition(Transition<T, S> transition) {
+        this.addTransition(transition.source, transition.event, transition.destination);
+    }
+
+    public void addTransition(T source, Event<S> action, T destination) {
+        transitions.add(new Transition<T, S>(getOrAddState(source), getOrAddState(destination), action));
+        alphabet.add(action);
+    }
+
     public State<T, S> getOrAddState(T label) {
         if (this.labelToState.keySet().contains(label)) {
             return this.labelToState.get(label);
@@ -128,6 +229,9 @@ public class FSM<T,S> {
 
     public State<T, S> getOrAddState(State<T, S> state) {
         State<T, S> thisState;
+        if (state == null) {
+            System.out.println("");
+        }
         if (!this.states.contains(state)) {
             thisState = getOrAddState(state.label);
         } else {
@@ -136,7 +240,7 @@ public class FSM<T,S> {
 
         for (Event<S> event : state.outgoingTransitions.keySet()) {
             for (T label : state.outgoingTransitions.get(event)) {
-              //  State<T, S> s = this.getOrAddState(label);
+                //  State<T, S> s = this.getOrAddState(label);
                 if (this.labelToState.keySet().contains(label)) {
                     thisState.addOutgoingTransition(event, labelToState.get(label));
                 }
@@ -145,7 +249,7 @@ public class FSM<T,S> {
 
         for (Event<S> event : state.incomingTransitions.keySet()) {
             for (T label : state.incomingTransitions.get(event)) {
-              //  State<T, S> s = this.getOrAddState(label);
+                //  State<T, S> s = this.getOrAddState(label);
                 if (this.labelToState.keySet().contains(label)) {
                     thisState.addIncomingTransition(event, labelToState.get(label));
                 }
@@ -243,7 +347,6 @@ public class FSM<T,S> {
         return transitionsUsed;
     }
 
-
     public void simplify(Set<Transition<T, S>> transitionsToKeep) {
         Set<Transition<T, S>> transitionsToRemove = new HashSet<Transition<T, S>>(transitions);
         transitionsToRemove.removeAll(transitionsToKeep);
@@ -283,7 +386,7 @@ public class FSM<T,S> {
                 for (Object event : state.outgoingTransitions.keySet()) {
                     Set<T> outgoingStatesLabels = (Set<T>) state.outgoingTransitions.get(event);
                     outgoingStatesLabels.forEach(label -> next.add((State<T, S>) state.parent.labelToState.get(label)));
-                  //  next.addAll(states);
+                    //  next.addAll(states);
                 }
             }
 
@@ -305,16 +408,87 @@ public class FSM<T,S> {
         }
     }
 
-    public void retainOnly(Set<T> labelsToKeep){
-        for(T label : labelsToKeep){
-            if(!labelsToKeep.contains(label)) {
+//	public void removeStatesFromWhichFinalStatesAreNotReachable(){
+//		//remove all non-initial states that have no incoming transitions
+//		//(thus remove all outgoing transitions of these states)
+//		//continue until no more such states can be removed
+//		//check if these is still a final state
+//		//if not then automaton never fails
+//		//else
+//		//  remove all non-final, non-initial states that have no outgoing transitions
+//
+//		boolean changedFSM = true;
+//		Set<State<T,S>> statesToRemove = new HashSet<State<T,S>>();
+//
+//		while(changedFSM){
+//			changedFSM = false;
+//			for(State<T,S> state : states){
+////				if(!initial.contains(state)
+////						&& state.incomingTransitions.entrySet().size() == 0){
+////
+////					changedFSM = true;
+////					statesToRemove.add(state);
+////					for(Event<S> action : (Collection<Event<S>>) state.outgoingTransitions.keySet()){
+////						Set<State<T,S>> outgoingStates = state.outgoingTransitions.get(action);
+////
+////						for(State<T,S> outgoingState : outgoingStates){
+////							Set<State<T,S>> statesIncomingBeforeAction = (Set<State<T,S>>) outgoingState.incomingTransitions.get(action);
+////
+////							statesIncomingBeforeAction.remove(action);
+////
+////							if(statesIncomingBeforeAction.size() == 0){
+////								outgoingState.incomingTransitions.remove(action);
+////							}
+////						}
+////					}
+////				}
+////				else
+//				if(!finalStates.contains(state)
+//						 && state.outgoingTransitions.entrySet().size() == 0){
+//					statesToRemove.add(state);
+//					changedFSM = true;
+//
+//					for(Event<S> action : (Collection<Event<S>>) state.incomingTransitions.keySet()){
+//						Set<T> incomingStatesLabels = state.incomingTransitions.get(action);
+//
+//						for(T incomingStateLabel : incomingStatesLabels){
+//							State<T,S> incomingState = getOrAddState(incomingStateLabel);
+//
+//						    Set<T> statesOutgoingAfterAction = (Set<T>) incomingState.outgoingTransitions.get(action);
+//
+//							statesOutgoingAfterAction.remove(action);
+//
+//							if(statesOutgoingAfterAction.size() == 0){
+//								incomingState.incomingTransitions.remove(action);
+//							}
+//						}
+//					}
+//				}
+//			}
+//
+//			this.states.removeAll(statesToRemove);
+//		}
+//
+//
+//		if(Collections.disjoint(states, finalStates)
+//				|| Collections.disjoint(states, initial)){
+//			neverFails = true;
+//		}
+//		else{
+//			neverFails = false;
+//		}
+//	}
+
+    public void retainOnly(Set<T> labelsToKeep) {
+        for (T label : labelsToKeep) {
+            if (!labelsToKeep.contains(label)) {
                 this.labelToState.remove(label);
             }
         }
 
-        Set<State<T,S>> statesToRemove = new HashSet<>();
-        for(State<T,S> state: states){
-            if(!labelsToKeep.contains(state.label)){
+        Set<State<T, S>> statesToRemove = new HashSet<>();
+        for (State<T, S> state : states) {
+            if (!labelsToKeep.contains(state.label)) {
                 statesToRemove.add(state);
             }
         }
@@ -323,23 +497,23 @@ public class FSM<T,S> {
         this.initial.removeAll(statesToRemove);
         this.finalStates.removeAll(statesToRemove);
 
-        for(State<T,S> state : states){
-            for(Event<S> event : state.incomingTransitions.keySet()){
+        for (State<T, S> state : states) {
+            for (Event<S> event : state.incomingTransitions.keySet()) {
                 Set<T> stateLabelsToKeep = new HashSet<>();
 
-                for(T label : state.incomingTransitions.get(event)){
-                    if(labelsToKeep.contains(label)){
+                for (T label : state.incomingTransitions.get(event)) {
+                    if (labelsToKeep.contains(label)) {
                         stateLabelsToKeep.add(label);
                     }
                 }
 
                 state.incomingTransitions.put(event, stateLabelsToKeep);
             }
-            for(Event<S> event : state.outgoingTransitions.keySet()){
+            for (Event<S> event : state.outgoingTransitions.keySet()) {
                 Set<T> stateLabelsToKeep = new HashSet<>();
 
-                for(T label : state.outgoingTransitions.get(event)){
-                    if(labelsToKeep.contains(label)){
+                for (T label : state.outgoingTransitions.get(event)) {
+                    if (labelsToKeep.contains(label)) {
                         stateLabelsToKeep.add(label);
                     }
                 }
@@ -348,11 +522,11 @@ public class FSM<T,S> {
             }
         }
 
-        Set<Transition<T,S>> toRemove = new HashSet<>();
+        Set<Transition<T, S>> toRemove = new HashSet<>();
 
-        for(Transition<T, S> transition : transitions){
-            if(!labelsToKeep.contains(transition.source.label)
-                    || !labelsToKeep.contains(transition.destination.label)){
+        for (Transition<T, S> transition : transitions) {
+            if (!labelsToKeep.contains(transition.source.label)
+                    || !labelsToKeep.contains(transition.destination.label)) {
                 toRemove.add(transition);
             }
         }
@@ -464,77 +638,6 @@ public class FSM<T,S> {
         this.neverFails = true;
     }
 
-//	public void removeStatesFromWhichFinalStatesAreNotReachable(){
-//		//remove all non-initial states that have no incoming transitions
-//		//(thus remove all outgoing transitions of these states)
-//		//continue until no more such states can be removed
-//		//check if these is still a final state
-//		//if not then automaton never fails
-//		//else
-//		//  remove all non-final, non-initial states that have no outgoing transitions
-//
-//		boolean changedFSM = true;
-//		Set<State<T,S>> statesToRemove = new HashSet<State<T,S>>();
-//
-//		while(changedFSM){
-//			changedFSM = false;
-//			for(State<T,S> state : states){
-////				if(!initial.contains(state)
-////						&& state.incomingTransitions.entrySet().size() == 0){
-////
-////					changedFSM = true;
-////					statesToRemove.add(state);
-////					for(Event<S> action : (Collection<Event<S>>) state.outgoingTransitions.keySet()){
-////						Set<State<T,S>> outgoingStates = state.outgoingTransitions.get(action);
-////
-////						for(State<T,S> outgoingState : outgoingStates){
-////							Set<State<T,S>> statesIncomingBeforeAction = (Set<State<T,S>>) outgoingState.incomingTransitions.get(action);
-////
-////							statesIncomingBeforeAction.remove(action);
-////
-////							if(statesIncomingBeforeAction.size() == 0){
-////								outgoingState.incomingTransitions.remove(action);
-////							}
-////						}
-////					}
-////				}
-////				else
-//				if(!finalStates.contains(state)
-//						 && state.outgoingTransitions.entrySet().size() == 0){
-//					statesToRemove.add(state);
-//					changedFSM = true;
-//
-//					for(Event<S> action : (Collection<Event<S>>) state.incomingTransitions.keySet()){
-//						Set<T> incomingStatesLabels = state.incomingTransitions.get(action);
-//
-//						for(T incomingStateLabel : incomingStatesLabels){
-//							State<T,S> incomingState = getOrAddState(incomingStateLabel);
-//
-//						    Set<T> statesOutgoingAfterAction = (Set<T>) incomingState.outgoingTransitions.get(action);
-//
-//							statesOutgoingAfterAction.remove(action);
-//
-//							if(statesOutgoingAfterAction.size() == 0){
-//								incomingState.incomingTransitions.remove(action);
-//							}
-//						}
-//					}
-//				}
-//			}
-//
-//			this.states.removeAll(statesToRemove);
-//		}
-//
-//
-//		if(Collections.disjoint(states, finalStates)
-//				|| Collections.disjoint(states, initial)){
-//			neverFails = true;
-//		}
-//		else{
-//			neverFails = false;
-//		}
-//	}
-
     public fsm.FSM<T, S> total() {
         fsm.FSM<T, S> totalFSM = deepCopy(this);
 
@@ -565,104 +668,6 @@ public class FSM<T,S> {
         return dFSM;
     }
 
-    public static <Q, R, T, S> fsm.FSM<Pair<Q, T>, Pair<R, S>> union(fsm.FSM<Q, R> fsm1, fsm.FSM<T, S> fsm2) {
-
-        fsm.FSM<Pair<Q, T>, Pair<R, S>> union = new fsm.FSM<Pair<Q, T>, Pair<R, S>>();
-
-        for (State<Q, R> initial1 : fsm1.initial) {
-            for (State<T, S> initial2 : fsm2.initial) {
-
-                State<Pair<Q, T>, Pair<R, S>> initialState = new State<Pair<Q, T>, Pair<R, S>>(new Pair<Q, T>(initial1.label, initial2.label), null, union);
-                union.addInitialState(initialState);
-
-                Set<State<Pair<Q, T>, Pair<R, S>>> currentStates = new HashSet<State<Pair<Q, T>, Pair<R, S>>>();
-                currentStates.add(initialState);
-
-                boolean addedSomething = true;
-
-                while (addedSomething) {
-                    //Set<State<Pair<Q,T>,Pair<R,S>>> prevStates = new HashSet<State<Pair<Q,T>,Pair<R,S>>>(currentStates);
-
-                    currentStates.clear();
-
-                    addedSomething = false;
-
-                    for (State<Pair<Q, T>, Pair<R, S>> state : currentStates) {
-                        State<Q, R> firstState = fsm1.labelToState.get(state.label.first);
-                        State<T, S> secondState = fsm2.labelToState.get(state.label.second);
-
-                        Set<Event<R>> firstOutgoingEntryValues = firstState.outgoingTransitions.keySet();
-                        Set<Event<S>> secondOutgoingEntryValues = secondState.outgoingTransitions.keySet();
-
-                        //Will the below work? Who knows.
-                        Set<Event> synchronousActions = new HashSet<Event>();
-
-                        if (initial1.label.getClass().asSubclass(initial2.label.getClass()) != null
-                                || initial2.label.getClass().asSubclass(initial1.label.getClass()) != null) {
-                            synchronousActions.addAll(firstOutgoingEntryValues);
-                            synchronousActions.retainAll(secondOutgoingEntryValues);
-
-                            firstOutgoingEntryValues.removeAll(synchronousActions);
-                            secondOutgoingEntryValues.removeAll(synchronousActions);
-                        }
-
-                        for (Event<R> action : firstOutgoingEntryValues) {
-                            for (Q nextFirstStateLabel : firstState.outgoingTransitions.get(action)) {
-                                Pair<Q, T> nextState = new Pair<Q, T>(nextFirstStateLabel, secondState.label);
-                                Event<Pair<R, S>> newAction = new Event<Pair<R, S>>(new Pair<R, S>(action.label, null));
-
-                                union.addTransition(state.label, newAction, nextState);
-                                addedSomething = true;
-                                if (fsm1.finalStates.contains(nextState.first)
-                                        || fsm2.finalStates.contains(nextState.second)) {
-                                    union.addFinalState(union.labelToState.get(nextState));
-                                }
-                            }
-                        }
-
-                        for (Event<S> action : secondOutgoingEntryValues) {
-                            for (T nextSecondStateLabel : secondState.outgoingTransitions.get(action)) {
-                                Pair<Q, T> nextState = new Pair<Q, T>(firstState.label, nextSecondStateLabel);
-
-                                Event<Pair<R, S>> newAction = new Event<Pair<R, S>>(new Pair<R, S>(null, action.label));
-
-                                union.addTransition(state.label, newAction, nextState);
-                                addedSomething = true;
-                                if (fsm1.finalStates.contains(nextState.first)
-                                        || fsm2.finalStates.contains(nextState.second)) {
-                                    union.addFinalState(union.labelToState.get(nextState));
-                                }
-                            }
-                        }
-
-                        for (Event action : synchronousActions) {
-                            for (Q nextFirstStateLabel : firstState.outgoingTransitions.get(action)) {
-                                for (T nextSecondStateLabel : secondState.outgoingTransitions.get(action)) {
-
-                                    Pair<Q, T> nextState = new Pair<Q, T>(nextFirstStateLabel, nextSecondStateLabel);
-                                    Event<Pair<R, S>> newAction = new Event<Pair<R, S>>(new Pair<R, S>((R) action.label, (S) action.label));
-
-                                    union.addTransition(state.label, newAction, nextState);
-                                    addedSomething = true;
-                                    if (fsm1.finalStates.contains(nextState.first)
-                                            || fsm2.finalStates.contains(nextState.second)) {
-                                        union.addFinalState(union.labelToState.get(nextState));
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return union;
-    }
-
-    public static <Q, R, T, S> DeterministicFSM<Pair<Set<State<Q, R>>, Set<State<T, S>>>, Pair<R, S>> intersection(fsm.FSM<Q, R> fsm1, fsm.FSM<T, S> fsm2) {
-        return (union(fsm1.complement(), fsm2.complement())).complement();
-    }
-
     public fsm.FSM<T, S> withLoopingStates(Set<Event<S>> loopingActions) {
         fsm.FSM<T, S> loopingFSM = deepCopy(this);
 
@@ -678,11 +683,13 @@ public class FSM<T,S> {
     public String toString() {
         //if(neverFails) return "FSM never violates!";
 
-        String representation = "";
+        String representation = "digraph " + name + " {\n";
 
         for (Transition<T, S> t : this.transitions) {
             representation += t.toString() + "\n";
         }
+
+        representation += "}";
 
         return representation;
     }
@@ -829,4 +836,4 @@ public class FSM<T,S> {
 //		}
 //		
 //		return reducedFSM;
-	}
+}

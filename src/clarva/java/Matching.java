@@ -1,5 +1,12 @@
 package clarva.java;
 
+import fsm.date.events.MethodCall;
+import org.apache.commons.lang3.ClassUtils;
+import soot.*;
+import soot.jimple.InvokeExpr;
+import soot.jimple.spark.sets.EmptyPointsToSet;
+import soot.util.Chain;
+
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -10,67 +17,51 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.commons.lang3.ClassUtils;
-
-import clarva.analysis.MethodsAnalysis;
-import fsm.date.events.MethodCall;
-import soot.Context;
-import soot.Local;
-import soot.MethodOrMethodContext;
-import soot.PointsToAnalysis;
-import soot.PointsToSet;
-import soot.Scene;
-import soot.SootMethod;
-import soot.Type;
-import soot.jimple.InvokeExpr;
-import soot.jimple.spark.sets.EmptyPointsToSet;
-
 public class Matching {
 
-	public MethodsAnalysis ma;
-	
-	public Matching(MethodsAnalysis ma){
-		this.ma = ma;
-	}
+    public MethodsAnalysis ma;
+
+    public Matching(MethodsAnalysis ma) {
+        this.ma = ma;
+    }
 
 
-	public static void loadProgramClasses(File root) throws IOException {
-		if(root.isDirectory()){
-			File[] files = root.listFiles();
+    public static void loadProgramClasses(File root) throws IOException {
+        if (root.isDirectory()) {
+            File[] files = root.listFiles();
 
-			for(File f : files) {
-				loadProgramClasses(f);
-			}
-		}
-		else{
-			addURL(root.toURI().toURL());
-		}
-	}
+            for (File f : files) {
+                loadProgramClasses(f);
+            }
+        } else {
+            addURL(root.toURI().toURL());
+        }
+    }
 
-	//from https://stackoverflow.com/questions/1010919/adding-files-to-java-classpath-at-runtime
-	private static void addURL(URL u) throws IOException {
+    //from https://stackoverflow.com/questions/1010919/adding-files-to-java-classpath-at-runtime
+    private static void addURL(URL u) throws IOException {
 
-		URLClassLoader sysloader = (URLClassLoader) ClassLoader.getSystemClassLoader();
-		Class sysclass = URLClassLoader.class;
+        URLClassLoader sysloader = (URLClassLoader) ClassLoader.getSystemClassLoader();
+        Class sysclass = URLClassLoader.class;
 
-		try {
-			Method method = sysclass.getDeclaredMethod("addURL",  new Class[]{URL.class});
-			method.setAccessible(true);
-			method.invoke(sysloader, new Object[]{u});
-		} catch (Throwable t) {
-			t.printStackTrace();
-			throw new IOException("Error, could not add URL to system classloader");
-		}//end try catch
+        try {
+            Method method = sysclass.getDeclaredMethod("addURL", new Class[]{URL.class});
+            method.setAccessible(true);
+            method.invoke(sysloader, new Object[]{u});
+        } catch (Throwable t) {
+            t.printStackTrace();
+            throw new IOException("Error, could not add URL to system classloader");
+        }//end try catch
 
-	}//end method
+    }//end method
 
 
-	public static Boolean matches(InvokeExpr expr, MethodCall methodEvent){
-		
-		SootMethod sootMethod = expr.getMethodRef().resolve();
-		
-		return matchesMethod(sootMethod, methodEvent);
-		
+    public static Boolean matches(InvokeExpr expr, MethodCall methodEvent) {
+
+        SootMethod sootMethod = expr.getMethodRef().resolve();
+
+        return matchesMethod(sootMethod, methodEvent);
+
 //		if(matchesMethod(sootMethod, larvaEvent)){
 //		//	Boolean exprMatches = false;
 //			
@@ -106,139 +97,245 @@ public class Matching {
 //		else{
 //			return false;
 //		}
-	}
+    }
 
-	private static String getFullClassName(String className){
-		final Package[] packages = Package.getPackages();
+    private static String getFullClassName(String className) {
+        final Package[] packages = Package.getPackages();
 
-	    for (final Package p : packages) {
-	        final String pack = p.getName();
-	        final String tentative = pack + "." + className;
-	        try {
-	            Class.forName(tentative);
-	        } catch (final ClassNotFoundException e) {
-	            continue;
-	        }
-	        return tentative;
-	    }
-	    
-	    //check if primitive
-	    try{
-	    	ClassUtils.getClass(className);
-	    	return className;
-	    } catch (Exception e){
-		    return "";
-	    }
-	    
-	}
-	
-	public static Boolean matchesMethod(MethodOrMethodContext method, MethodCall methodEvent){
-		
-		MethodCall larvaEvent = methodEvent;
-		
-		SootMethod sootMethod = method.method();
-		
-		//static or not both
-		Boolean methodTypeMatches = false;
-		
-		if((methodEvent.staticMethod && method.method().isStatic())
-				|| (!methodEvent.staticMethod && !method.method().isStatic())) methodTypeMatches = true;
-		else return false;
-		
-		Boolean classTypeMatches = false;
-		Boolean methodNameMatches = false;
-		Boolean argTypeMatches = false;
-		Boolean returnTypeMatches = false;
+        for (final Package p : packages) {
+            final String pack = p.getName();
+            final String tentative = pack + "." + className;
+            try {
+                Class.forName(tentative);
+            } catch (final ClassNotFoundException e) {
+                continue;
+            }
+            return tentative;
+        }
 
-		//Method Name Match
-		if(larvaEvent.name.equals(sootMethod.getName())
-				|| (larvaEvent.name.equals("new") && sootMethod.isConstructor())){
-			methodNameMatches = true;
-		}
-		else return false;
+        //check if primitive
+        try {
+            ClassUtils.getClass(className);
+            return className;
+        } catch (Exception e) {
+            return "";
+        }
 
-		//Declaring Class Name Match
-		//what about packages? are we catching them?
-		if(larvaEvent.objectType.equals("*")
-				|| larvaEvent.objectType.replaceAll("\\+", "").equals(sootMethod.getDeclaringClass().getName())
-				|| sootMethod.getDeclaringClass().getName().endsWith("." + larvaEvent.objectType.replaceAll("\\+", ""))
-				|| sootMethod.getDeclaringClass().getType().getClassName().equals("Object")){
-			classTypeMatches = true;
-		}
-		else{
-			
-			try{
-				//this will not work if package name is not in class name
-				String className = larvaEvent.objectType.replaceAll("\\+", "");
-				
-				String fullClassName = getFullClassName(className);
-				
-				if(fullClassName.equals("")) fullClassName = className;
-				Class larvaEventType = ClassUtils.getClass(fullClassName);
-				Class sootMethodType = ClassUtils.getClass(sootMethod.getDeclaringClass().getType().getClassName());
-		
-		
-				//if the larvaEventType is a super class of sootMethodType
-				if(!larvaEventType.isAssignableFrom(sootMethodType)){
-					return false;
-				}
-				else{
-					classTypeMatches = true;
-				}
-			} catch (ClassNotFoundException e) {
+    }
 
-//			if(!sootMethodTypes.get(i).toString().equals(larvaActionTypes.get(i))
-//					&& !sootMethodTypes.get(i).toString().endsWith(larvaActionTypes.get(i))
-//					&& !larvaActionTypes.get(i).endsWith(sootMethodTypes.get(i).toString())){
-//				return false;
-//			}
-				//return false;
-				
-				//just in case, for soundness
-				classTypeMatches = true;
-			}
-		}
+    public static SootClass getSootClass(String className) {
+        SootClass sootClass = Scene.v().getSootClass(className);
+        //proper classes have java.lang.Object as a superclass
+        if (!sootClass.hasSuperclass()) {
+            Chain<SootClass> classes = Scene.v().getClasses();
 
-		//Parameter Type Match
-		List<Type> sootMethodTypes = sootMethod.getParameterTypes();
-		ArrayList<String> larvaActionTypes = larvaEvent.argTypes;
+            List<SootClass> matching = new ArrayList<>();
 
-		if(sootMethodTypes.size() == larvaActionTypes.size()){
-			
-			
-			for(int i = 0; i < larvaActionTypes.size(); i++){
-				
-				Class<?> sootMethodType;
-				Class<?> larvaActionType;
-				try {
-					
-					String fullClassName = getFullClassName(larvaActionTypes.get(i).toString());
-					sootMethodType = ClassUtils.getClass(sootMethodTypes.get(i).toString());
-					larvaActionType = ClassUtils.getClass(fullClassName);
-				
-				//or other way round?
-				if(!larvaActionType.isAssignableFrom(sootMethodType)
-						&& !ClassUtils.isAssignable(larvaActionType, sootMethodType)){
-					return false;
-				}
-				} catch (ClassNotFoundException e) {
-					// TODO Auto-generated catch block
-				//	e.printStackTrace();
-					//This handles when .getClass fails (e.g. when .getClass(String) instead of .getClass(java.lang.String)
-					//in this case we just check whether the two strings are equal, or one of them ends with the other
-					//e.g. since java.lang.String ends with String then we assume that they will match
-					if(!sootMethodTypes.get(i).toString().equals(larvaActionTypes.get(i))
-							&& !sootMethodTypes.get(i).toString().endsWith(larvaActionTypes.get(i))
-							&& !larvaActionTypes.get(i).endsWith(sootMethodTypes.get(i).toString())
-							&& !sootMethod.getDeclaringClass().getType().getClassName().equals("Object")){
-						return false;
-					}
-				}
+            for (SootClass sootClass1 : classes) {
+                if (sootClass1.getShortJavaStyleName().equals(className)) {
+                    matching.add(sootClass1);
+                }
+            }
 
-				
-				//else taghtiex kaz
-			}
-			argTypeMatches = true;
+            if (matching.size() == 1) return matching.get(0);
+            else {
+                //for some reason sometimes there is an empty class corresponding to a full sootclass
+                matching.remove(sootClass);
+
+                if (matching.size() == 1) {
+                    return matching.get(0);
+                } else {
+                    return null;
+                }
+            }
+
+        } else {
+            return sootClass;
+        }
+    }
+
+    public static Boolean subStructureOf(SootClass child, SootClass parent) {
+        if (child.equals(parent)) return true;
+
+        if (!child.isInterface() && !parent.isInterface()
+                && Scene.v().getActiveHierarchy().isClassSubclassOf(child, parent)) {
+            return true;
+        }
+
+        if (child.isInterface() && parent.isInterface()
+                && Scene.v().getActiveHierarchy().isInterfaceSubinterfaceOf(child, parent)) {
+            return true;
+        }
+
+        if (child.getInterfaces().contains(parent)) {
+            return true;
+        }
+
+        //anything else to do?
+
+        return false;
+    }
+
+    public static Boolean typeMatches(String larvaType, SootClass sootClass) {
+        boolean classTypeMatches = true;
+
+        if (larvaType.equals("*")
+                || larvaType.replaceAll("\\+", "").equals(sootClass.getName())
+                || sootClass.getName().endsWith("." + larvaType.replaceAll("\\+", ""))
+                || sootClass.getType().getClassName().equals("Object")) {
+            classTypeMatches = true;
+        } else {
+            //this will not work if package name is not in class name
+            String className = larvaType.replaceAll("\\+", "");
+
+            try {
+
+                SootClass sootClass1 = getSootClass(className);
+                if (sootClass1 == null) {
+                    return true;
+                }
+
+                if (!subStructureOf(sootClass, sootClass1)) {
+                    return false;
+                }
+
+//				if(!sootClass1.equals(sootClass){
+//					if(!sootClass.isInterface() && !sootClass1.isInterface()
+//							&& !Scene.v().getActiveHierarchy().isClassSubclassOf(sootClass, sootClass1)) {
+//						if(sootClass1.isInterface() && sootClass.isInterface()
+//								&& !Scene.v().getActiveHierarchy().isInterfaceSubinterfaceOf(sootClass, sootClass1)) {
+//							if(!sootClass.getInterfaces().contains(sootClass1)) {
+//								return false;
+//							}
+//						}
+//					}
+//				}
+//				else if(!sootClass1.equals(sootClass)
+//                        && sootClass1.isInterface()
+//                        && !Scene.v().getActiveHierarchy().isInterfaceSubinterfaceOf(sootClass, sootClass1)){
+//					classTypeMatches = true;
+//				}
+            } catch (Exception e) {
+
+                return true;
+//				try {
+//					Class sootMethodType = ClassUtils.getClass(sootClass.getType().getClassName());
+//
+//					Class superClass = sootMethodType.getSuperclass();
+//					do {
+//						if(superClass.getName().endsWith(className)){
+//							classTypeMatches = true;
+//							superClass = Object.class;
+//						} else{
+//							superClass = sootMethodType.getSuperclass();
+//						}
+//					} while(!superClass.equals(Object.class));
+//
+//					if(!classTypeMatches) return false;
+//
+//				} catch (ClassNotFoundException ex) {
+//					//just in case, don t return false
+//					classTypeMatches = true;
+//				}
+//
+            }
+        }
+
+        return classTypeMatches;
+    }
+
+
+    public static Boolean matchesMethod(MethodOrMethodContext method, MethodCall methodEvent) {
+
+        MethodCall larvaEvent = methodEvent;
+
+        SootMethod sootMethod = method.method();
+
+        //static or not both
+        Boolean methodTypeMatches = false;
+
+        if ((methodEvent.staticMethod && method.method().isStatic())
+                || (!methodEvent.staticMethod && !method.method().isStatic())) methodTypeMatches = true;
+        else return false;
+
+        Boolean classTypeMatches = false;
+        Boolean methodNameMatches = false;
+        Boolean argTypeMatches = false;
+        Boolean returnTypeMatches = false;
+
+        //Method Name Match
+        if (larvaEvent.name.equals(sootMethod.getName())
+                || (larvaEvent.name.equals("new") && sootMethod.isConstructor())) {
+            methodNameMatches = true;
+        } else return false;
+
+        classTypeMatches = typeMatches(larvaEvent.objectType, sootMethod.getDeclaringClass());
+
+        //Parameter Type Match
+        List<Type> sootMethodTypes = sootMethod.getParameterTypes();
+        ArrayList<String> larvaActionTypes = larvaEvent.argTypes;
+
+        if (sootMethodTypes.size() == larvaActionTypes.size()
+                || larvaActionTypes.contains("*")) {
+
+            for (int j = 0, i = 0; i < larvaActionTypes.size(); i++, j++) {
+
+                //this takes care of when * is used as a larva action type to match multiple events
+
+                if (larvaActionTypes.size() != sootMethodTypes.size()
+                        && larvaActionTypes.get(i).equals("*")) {
+
+                    //Assumption: here we are assuming * is only used once
+                    assert !larvaActionTypes.subList(i + 1, larvaActionTypes.size()).contains("*");
+
+                    j = (sootMethodTypes.size()) - ((larvaActionTypes.size()) - i);
+                    continue;
+                }
+
+//				Class<?> sootMethodType;
+//				Class<?> larvaActionType;
+                try {
+
+//					String fullClassName = getFullClassName(larvaActionTypes.get(i).toString());
+//
+//					sootMethodType = ClassUtils.getClass(sootMethodTypes.get(j).toString());
+//					larvaActionType = ClassUtils.getClass(fullClassName);
+//
+//					//or other way round?
+//					if(!larvaActionType.isAssignableFrom(sootMethodType)
+//							&& !ClassUtils.isAssignable(larvaActionType, sootMethodType)){
+//						return false;
+//					}
+
+                    if (!larvaActionTypes.get(i).equals("*")) {
+
+                        if (!sootMethodTypes.get(j).toString().equals(larvaActionTypes.get(i))
+                                && !sootMethodTypes.get(j).toString().endsWith(larvaActionTypes.get(i))
+                                && !larvaActionTypes.get(i).endsWith(sootMethodTypes.get(j).toString())
+                                && !sootMethod.getDeclaringClass().getType().getClassName().equals("Object")) {
+
+                            if (RefType.class.isAssignableFrom(sootMethodTypes.get(i).getClass())
+                                    && !typeMatches(larvaActionTypes.get(i), ((RefType) sootMethodTypes.get(j)).getSootClass())) {
+
+                                return false;
+                            }
+                        }
+                    }
+
+
+                } catch (Exception e) {
+                    // TODO Auto-generated catch block
+                    //	e.printStackTrace();
+                    //This handles when .getClass fails (e.g. when .getClass(String) instead of .getClass(java.lang.String)
+                    //in this case we just check whether the two strings are equal, or one of them ends with the other
+                    //e.g. since java.lang.String ends with String then we assume that they will match
+                }
+
+
+                //else taghtiex kaz
+            }
+
+            argTypeMatches = true;
 
 //				//To account for subtypes
 //				try {
@@ -273,8 +370,8 @@ public class Matching {
 //						case "double" : methodParameterType = double.class; break;
 //						default : methodParameterType = Class.forName(methodTypeString); break;
 //					}
-					
-					
+
+
 //					if(!actionType.isAssignableFrom(methodParameterType)){
 //						return false;
 //					}
@@ -285,35 +382,32 @@ public class Matching {
 //					
 //					//return false???
 //				}
-				
-		}
-		else if(larvaActionTypes.size() == 0) argTypeMatches = true; //if no parameters then matches any overloaded method in larva
-		else return false;
 
-		//Return Type Match
-		if(larvaEvent.returnType.equals("*")
-				|| larvaEvent.returnType.equals(sootMethod.getReturnType().toString())){
-			returnTypeMatches = true;
-		}
-		else if(larvaEvent.name.equals("new") && sootMethod.isConstructor()){
-			returnTypeMatches = true;
-		}
-		else
-		{ 
-			String[] splitted = sootMethod.getReturnType().toString().split("\\.");
+        } else if (larvaActionTypes.size() == 0)
+            argTypeMatches = true; //if no parameters then matches any overloaded method in larva
+        else return false;
 
-			if(larvaEvent.returnType.equals(splitted[splitted.length - 1])){
-				returnTypeMatches = true;
-			}
-			else return false;
-		}
+        //Return Type Match
+        if (larvaEvent.returnType.equals("*")
+                || larvaEvent.returnType.toLowerCase().equals(sootMethod.getReturnType().toString().toLowerCase())) {
+            returnTypeMatches = true;
+        } else if (larvaEvent.name.equals("new") && sootMethod.isConstructor()) {
+            returnTypeMatches = true;
+        } else {
+            String[] splitted = sootMethod.getReturnType().toString().split("\\.");
 
-		return classTypeMatches && methodNameMatches && argTypeMatches && returnTypeMatches;
-	}
+            if (larvaEvent.returnType.equals(splitted[splitted.length - 1])) {
+                returnTypeMatches = true;
+            } else return false;
+        }
 
-	//// Used for Orphans Analysis ////
-	public Boolean flowInsensitiveCompatible(Shadow shadow, Shadow otherShadow){
-		PointsToAnalysis p2a = Scene.v().getPointsToAnalysis();
+        return classTypeMatches && methodNameMatches && argTypeMatches && returnTypeMatches;
+    }
+
+
+    //// Used for Orphans Analysis ////
+    public Boolean flowInsensitiveCompatible(JavaEvent shadow, JavaEvent otherShadow) {
+        PointsToAnalysis p2a = Scene.v().getPointsToAnalysis();
 
 //		Unit unit = ma.invokeExprToUnit.get(method);
 //		Unit otherUnit = ma.invokeExprToUnit.get(method);
@@ -329,28 +423,28 @@ public class Matching {
 //		
 //		return true;
 //		
-		//below code uses less precise flow-insensitive points-to analysis
-		//consider changing back to it if above code is slow on large programs
-		
-		//for(Map<String, Value> methodVarValue : shadow.valueBinding){
-			//for(Map<String, Value> otherVarValue : ma.shadowBindings.get(otherMethod)){
-		
-				//get common vars
-				Set<String> commonVars = new HashSet<String>(shadow.valueBinding.keySet());
-				commonVars.retainAll(otherShadow.valueBinding.keySet());
-				
-				boolean allVarsHereCompatible = true;
-				//for each common var
-				for(String var : commonVars){
-					//get the points to set for the var for the first shadow
-					Context c1 = shadow.unit;
-					PointsToSet firstP2S = p2a.reachingObjects(c1, (Local) shadow.valueBinding.get(var));
-							 
-					//get the points to set for the var for the second shadow
-					//when does this return an empty points to set??
-					Context c2 = otherShadow.unit;
-					PointsToSet secondP2S = p2a.reachingObjects(c2, (Local) otherShadow.valueBinding.get(var));
-					
+        //below code uses less precise flow-insensitive points-to analysis
+        //consider changing back to it if above code is slow on large programs
+
+        //for(Map<String, Value> methodVarValue : shadow.valueBinding){
+        //for(Map<String, Value> otherVarValue : ma.shadowBindings.get(otherMethod)){
+
+        //get common vars
+        Set<String> commonVars = new HashSet<String>(shadow.valueBinding.keySet());
+        commonVars.retainAll(otherShadow.valueBinding.keySet());
+
+        boolean allVarsHereCompatible = true;
+        //for each common var
+        for (String var : commonVars) {
+            //get the points to set for the var for the first shadow
+            Context c1 = shadow.unit;
+            PointsToSet firstP2S = p2a.reachingObjects(c1, (Local) shadow.valueBinding.get(var));
+
+            //get the points to set for the var for the second shadow
+            //when does this return an empty points to set??
+            Context c2 = otherShadow.unit;
+            PointsToSet secondP2S = p2a.reachingObjects(c2, (Local) otherShadow.valueBinding.get(var));
+
 //					if(firstP2S.hasNonEmptyIntersection(secondP2S))
 //						System.out.println("hello");
 //
@@ -363,19 +457,19 @@ public class Matching {
 //					if(firstP2S.equals(secondP2S))
 //						System.out.println("hello");
 
-					if((!firstP2S.hasNonEmptyIntersection(secondP2S) && !(shadow.equals(otherShadow)))
-							&& !(firstP2S instanceof EmptyPointsToSet || secondP2S instanceof EmptyPointsToSet)){
- 						allVarsHereCompatible = false;
-						break;
-					}
+            if ((!firstP2S.hasNonEmptyIntersection(secondP2S) && !(shadow.equals(otherShadow)))
+                    && !(firstP2S instanceof EmptyPointsToSet || secondP2S instanceof EmptyPointsToSet)) {
+                allVarsHereCompatible = false;
+                break;
+            }
 
-				}
-				
-				return allVarsHereCompatible;
-	//	return flowInsensitiveCompatibleClass(method, otherMethod) && flowInsensitiveCompatibleArgs(method, otherMethod);
-	}
-	
-	//we can use this when disabling certain method calls
+        }
+
+        return allVarsHereCompatible;
+        //	return flowInsensitiveCompatibleClass(method, otherMethod) && flowInsensitiveCompatibleArgs(method, otherMethod);
+    }
+
+    //we can use this when disabling certain method calls
 //								
 //								
 //								if(methodArgVal.getClass() == Local.class
@@ -414,7 +508,7 @@ public class Matching {
 //
 //		return null;
 //	}
-	
+
 
 //	public Map<String, Set<Object>> depMatch(DateLabel advice, SootMethod method){
 //
@@ -428,43 +522,43 @@ public class Matching {
 //		return null;
 //	}
 //	
-	//	public Boolean matches(SootMethod sootMethod, Event dateEvent){
-	//		Boolean classNameMatches = false;
-	//		Boolean methodNameMatches = false;
-	//		Boolean parameterTypeMatches = false;
-	//		Boolean returnTypeMatches = false;
-	//		
-	//		//Declaring Class Name Match
-	//		if(dateEvent.target.text == "*"
-	//				|| dateEvent.target.text == sootMethod.getDeclaringClass().getName()){
-	//			classNameMatches = true;
-	//		}
-	//		
-	//		//Method Name Match
-	//		if(dateEvent.methodName.text == sootMethod.getName()){
-	//			methodNameMatches = true;
-	//		}
-	//
-	//		//Parameter Type Match
-	//
-	//		//Return Type Match
-	//		if(dateEvent.returned == null && sootMethod.getReturnType() == null){
-	//			returnTypeMatches = true;
-	//		}
-	//		else if(dateEvent.returned.text == sootMethod.getReturnType().toString()){
-	//			returnTypeMatches = true;
-	//		}
-	//		else
-	//		{ 
-	//			String[] splitted = sootMethod.getReturnType().toString().split("\\.");
-	//			
-	//			if(dateEvent.returned.text == splitted[splitted.length - 1]){
-	//				returnTypeMatches = true;
-	//			}
-	//		}
-	//
-	//		return classNameMatches && methodNameMatches && parameterTypeMatches && returnTypeMatches;
-	//	}
+    //	public Boolean matches(SootMethod sootMethod, Event dateEvent){
+    //		Boolean classNameMatches = false;
+    //		Boolean methodNameMatches = false;
+    //		Boolean parameterTypeMatches = false;
+    //		Boolean returnTypeMatches = false;
+    //
+    //		//Declaring Class Name Match
+    //		if(dateEvent.target.text == "*"
+    //				|| dateEvent.target.text == sootMethod.getDeclaringClass().getName()){
+    //			classNameMatches = true;
+    //		}
+    //
+    //		//Method Name Match
+    //		if(dateEvent.methodName.text == sootMethod.getName()){
+    //			methodNameMatches = true;
+    //		}
+    //
+    //		//Parameter Type Match
+    //
+    //		//Return Type Match
+    //		if(dateEvent.returned == null && sootMethod.getReturnType() == null){
+    //			returnTypeMatches = true;
+    //		}
+    //		else if(dateEvent.returned.text == sootMethod.getReturnType().toString()){
+    //			returnTypeMatches = true;
+    //		}
+    //		else
+    //		{
+    //			String[] splitted = sootMethod.getReturnType().toString().split("\\.");
+    //
+    //			if(dateEvent.returned.text == splitted[splitted.length - 1]){
+    //				returnTypeMatches = true;
+    //			}
+    //		}
+    //
+    //		return classNameMatches && methodNameMatches && parameterTypeMatches && returnTypeMatches;
+    //	}
 //
 //	public static Boolean matches(SootMethod sootMethod, Trigger trigger){
 //		if(trigger.getClass().equals(EventCollection.class))
