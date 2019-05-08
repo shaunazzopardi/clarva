@@ -25,4 +25,6 @@ Example call: **java -jar clarva.jar java "./date.lrv" "./bin" main.Main server.
 
 Note that instrumentation is optimised by creating a new class with methods for each method call to be instrumented, and by instrumented the bytecode of the original Java program by invoking these new methods for events that have been classed as needed for sound and complete runtime verification. The DATE produced then is transformed to match events occuring in the new class, instead of in the whole program.
 
+The output class files should then be weaved with the outpute DATE using the LARVA compiler.
+
 See technical report CS-2017-01 in this [series](https://www.um.edu.mt/ict/cs/research/technical_reports) for a detailed version of the theory behind this tool, which will be published in the proceedings of [PrePost 2017](http://staff.um.edu.mt/afra1/prepost17/), in the [EPCTS series](http://eptcs.web.cse.unsw.edu.au/content.cgi?PrePost17), and available on [arXiv](https://arxiv.org/abs/1708.07230).
