@@ -14,10 +14,9 @@ cLARVA (= [clara](https://github.com/Sable/clara) + [LARVA](http://www.cs.um.edu
     (a) *fast*: uses a Class Hierarchy Analysis (CHA) to create a more or less sound callgraph, while ignoring java.*, jdk.*, and sun.* packages, given a quick analysis; and
     (b) *intensive* uses (SPARK)[https://link.springer.com/content/pdf/10.1007%2F3-540-36579-6_12.pdf, creating a more precise callgraph and pointer-analysis by considering also library files, leading to a longer processing time;
 2. *filePath to* DATE property --- an automata specifying the violating traces of the previous program (through AspectJ notions) with transitions over events (method calls) and conditions encoding data state (see [Larva Manual](http://www.cs.um.edu.mt/svrg/Tools/LARVA/LARVA-manual.pdf) for the syntax of DATEs).
-3. *root directory of* compiled Java program (in eclipse, the bin directory); 
-4. *Canonical name* of the Main class of program (of the form \<package-name\>.\<class-name\>); and
-4. *Entry-point methods* of the program other then the main method in the main class (e.g. a list of API methods), note that if your program uses threads then you must include your *run* method here.
-      
+3. *root directory of* compiled Java program (in eclipse, the bin directory); and
+4. *Canonical name* of the Main class of program (of the form \<package-name\>.\<class-name\>).
+
 **Output**: 
 1. A DATE that is a pruned version of Input (2), with which it is enough to monitor Input (3).
 2. Class files that are optimally instrumented with respect to the DATE.

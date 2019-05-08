@@ -27,9 +27,9 @@ public class Main implements Runnable {
         if (args == null || args.length == 0 || args.length < 3) {
             System.out.println("Arguments must specify: (0) the mode of the analysis: fast or intensive" +
                     "(1) property file followed by the " +
-                    "(2) program directory, " +
-                    "(3) the main class, and " +
-                    "finally any other (4) entry methods to the application (e.g. the run method of any Thread, or the methods offered by an API).");
+                    "(2) program directory, and" +
+                    "(3) the main class");
+//                    "finally any other (4) entry methods to the application (e.g. the run method of any Thread, or the methods offered by an API).");
             return;
         }
 
@@ -42,10 +42,10 @@ public class Main implements Runnable {
 
             String programPath = args[2];
             String mainClass = args[3];
-            List<String> entryPoints = new ArrayList<>();
-            for (int i = 4; i < args.length; i++) {
-                entryPoints.add(args[args.length - 1]);
-            }
+//            List<String> entryPoints = new ArrayList<>();
+//            for (int i = 4; i < args.length; i++) {
+//                entryPoints.add(args[args.length - 1]);
+//            }
 
             PropertyTransformer.generateFiniteStateMachines(properties);
 
@@ -59,7 +59,7 @@ public class Main implements Runnable {
 //			packagesToConsider.add("java.lang.invoke.LambdaMetafactory");
             //	packagesToConsider.add("java.util.*");
 //			//	packagesToConsider.add("java.io.*");
-            initializeSoot(fast, mainClass, entryPoints, programPath, packagesToConsider);
+            initializeSoot(fast, mainClass, programPath, packagesToConsider);
 
 //			G.reset();
 
@@ -77,7 +77,7 @@ public class Main implements Runnable {
     }
 
     @SuppressWarnings("static-access")
-    private static void initializeSoot(boolean fast, String mainClass, List<String> entryPoints, String sootCp, Set<String> packagesToConsider) {
+    private static void initializeSoot(boolean fast, String mainClass, String sootCp, Set<String> packagesToConsider) {
         G.v().reset();
 
         List<String> args = new ArrayList<>();
