@@ -8,6 +8,7 @@ cLARVA (= [clara](https://github.com/Sable/clara) + [LARVA](http://www.cs.um.edu
 1. Only properties about sequential parts of the program will be analysed soundly. You can still analyse programs with threads, but the results will only apply intra-thread, and no guarantees are given for any interleaving behaviour.
 2. Only LARVA scripts with one DATE will be processed.
 3. The pointer-analysis employed is SPARK, as provided by Soot, and is configured to ignore Java libraries (to reduce running time). Therefore the soundness of the analysis is limited to properties about the application where the control-flow within calls to Java libraries is irrelevant to the property and to the creation of sound abstraction of the program.
+4. Tool is still under development. It has been manually verified to give correct results under some case studies, however this does not ensure that other bugs are not present.
 
 **Input**: 
 1. *mode* of the analysis --
@@ -17,11 +18,15 @@ cLARVA (= [clara](https://github.com/Sable/clara) + [LARVA](http://www.cs.um.edu
 3. *root directory of* compiled Java program (in eclipse, the bin directory); and
 4. *Canonical name* of the Main class of program (of the form \<package-name\>.\<class-name\>).
 
+Example call: **fast -jar clarva.jar java "./date.lrv" "./bin" main.Main**
+
 **Output**: 
 1. A DATE that is a pruned version of Input (2), with which it is enough to monitor Input (3).
 2. Class files that are optimally instrumented with respect to the DATE.
 
 Note that instrumentation is optimised by creating a new class with methods for each method call to be instrumented, and by instrumented the bytecode of the original Java program by invoking these new methods for events that have been classed as needed for sound and complete runtime verification. The DATE produced then is transformed to match events occuring in the new class, instead of in the whole program.
+
+The output class files should then be weaved with the output DATE using the LARVA compiler.
 
 **Tips**
 
