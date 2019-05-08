@@ -145,11 +145,17 @@ public class JavaEvent extends CFGEvent {
 							continue;
 						}
 
-						//since analysis is local/intraprocedural
-						if(s.callingMethod.equals(this.callingMethod)
-								&& s.objectBinding.get(var).first.mayNotAlias(this.objectBinding.get(var).first)){
-							return false;
-						}
+						//NOTE 1
+						//I think we cannot use the commented stuff to check for non-aliasing, since the analysis local/intraprocedural
+						//while we are using a method with interprocedural reasoning
+						//if we use this, then if we have the creation of a user and the deletion of a user in different branches
+						//then these two events never may alias, since during a single execution of a method they can never occur on the same user
+						//however in our analysis we are considering that the method is re-entered, and thus one execution may be
+						//creating the user and the next execution deleting the user
+//						if(s.callingMethod.equals(this.callingMethod)
+//								&& s.objectBinding.get(var).first.mayNotAlias(this.objectBinding.get(var).first)){
+//							return false;
+//						}
 
 						{
 							Set<Type> types1 = new HashSet<>(this.objectBinding.get(var).first.getPointsToSet().possibleTypes());
@@ -195,6 +201,7 @@ public class JavaEvent extends CFGEvent {
 					} else if(s.objectBinding.get(var).first != null
 							&& this.objectBinding.get(var).second != null){
 
+						//TODO should this also be removed because of #NOTE 1?
 						if(s.callingMethod.equals(this.callingMethod)
 								&& !s.objectBinding.get(var).first.getPointsToSet().hasNonEmptyIntersection(this.objectBinding.get(var).second)){
 							return false;
@@ -241,6 +248,8 @@ public class JavaEvent extends CFGEvent {
 						}
 					} else if(s.objectBinding.get(var).second != null
 							&& this.objectBinding.get(var).first != null){
+
+						//TODO should this also be removed because of #NOTE 1?
 						if(s.callingMethod.equals(this.callingMethod)
 								&& !this.objectBinding.get(var).first.getPointsToSet().hasNonEmptyIntersection(s.objectBinding.get(var).second)){
 							return false;
@@ -286,6 +295,8 @@ public class JavaEvent extends CFGEvent {
 						}
 					} else if(s.objectBinding.get(var).second != null
 									&& this.objectBinding.get(var).second != null){
+
+						//TODO should this also be removed because of #NOTE 1?
 						if(s.callingMethod.equals(this.callingMethod)
 								&& !this.objectBinding.get(var).second.hasNonEmptyIntersection(s.objectBinding.get(var).second)){
 							return false;
@@ -360,7 +371,8 @@ public class JavaEvent extends CFGEvent {
 	}
 
 	public boolean mustAlias(JavaEvent s){
-		if(this.equals(s)) return true;
+		//an object at a certain statement does not necessarily always alias with itself
+//		if(this.equals(s)) return true;
 		if(!this.mayAlias(s)) return false;
 
 		for(String var : this.objectBinding.keySet()){
@@ -374,7 +386,7 @@ public class JavaEvent extends CFGEvent {
 
 					if (!s.objectBinding.get(var).first.mustAlias(this.objectBinding.get(var).first)) {
 						if(s.objectBinding.get(var).first.equals(this.objectBinding.get(var).first)){
-							continue;
+						//	continue;
 						} else{
 							return  false;
 						}
@@ -437,7 +449,7 @@ public class JavaEvent extends CFGEvent {
 
 				if(pair.first != null){
 					toReturn += pair.first.getLocal().getType().toString();
-				} else{
+				} else if(pair.second != null){
 					toReturn += "[";
 					for(Type type : pair.second.possibleTypes()){
 						if(toReturn.charAt(toReturn.length() - 1) != '['){

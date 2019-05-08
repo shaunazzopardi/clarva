@@ -5,6 +5,7 @@ import java.util.*;
 
 import clarva.analysis.ControlFlowResidualAnalysis;
 
+import clarva.analysis.ResidualArtifact;
 import clarva.analysis.cfg.CFG;
 import clarva.analysis.cfg.CFGEvent;
 import clarva.matching.Aliasing;
@@ -15,6 +16,8 @@ import compiler.Global;
 import compiler.ParseException;
 import compiler.ParsingString;
 import fsm.Event;
+import fsm.Transition;
+import fsm.date.DateLabel;
 import fsm.date.events.DateEvent;
 import fsm.helper.Pair;
 import soot.*;
@@ -66,7 +69,12 @@ public class PropertyTransformer extends SceneTransformer{
 		//System.out.println(dateFSMHierarchy);
 
 		for(fsm.date.Global global : dateFSMHierarchy){
-			Pair<fsm.date.Global, Boolean> globalBooleanPair = computeGlobalResidual(global, quickcheck, orphans);
+			Pair<fsm.date.Global, Boolean> globalBooleanPair = null;
+			try {
+				globalBooleanPair = computeGlobalResidual(global, quickcheck, orphans);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 
 //			fsm.date.Global globalResidual = globalBooleanPair.first;
 //			residualGlobals.add(globalResidual);
@@ -114,8 +122,13 @@ public class PropertyTransformer extends SceneTransformer{
 //		}
 	}
 	
-	public Pair<fsm.date.Global,Boolean> computeGlobalResidual(fsm.date.Global global, boolean quickcheck, boolean orphans){
+	public Pair<fsm.date.Global,Boolean> computeGlobalResidual(fsm.date.Global global, boolean quickcheck, boolean orphans) throws Exception {
 		boolean satisfied = true;
+
+		if(global.properties.size() > 1){
+			throw new Exception("Sorry, but the current version of this program only works with script files containing only one DATE. " +
+					"Place each DATE in a separate script file and re-input each individually.");
+		}
 
 		for(DateFSM property : new ArrayList<DateFSM>(global.properties)){
 			global.properties.remove(property);
@@ -149,6 +162,11 @@ public class PropertyTransformer extends SceneTransformer{
 
 
 
+		}
+
+		if(global.properties.size() + global.forEaches.size() > 1){
+			throw new Exception("Sorry, but the current version of this program only works with script files containing only one DATE. " +
+					"Place each DATE in a separate script file and re-input each individually.");
 		}
 		
 		for(ForEach foreach : new HashSet<ForEach>(global.forEaches)){
@@ -211,7 +229,9 @@ public class PropertyTransformer extends SceneTransformer{
 		}
 	}
 
+
 	public DateFSM computeResidual(DateFSM property, boolean quickcheck, boolean orphans){
+
 		MethodsAnalysis ma = new MethodsAnalysis(Scene.v(), property.alphabet);
 //		ClassHierarchy.classHierarchy(Scene.v());
 
@@ -256,13 +276,14 @@ public class PropertyTransformer extends SceneTransformer{
 				
 //				residuals = ControlFlowResidualAnalysis.ControlFlowAnalysis(residuals,
 
-				Map<JavaEvent, Pair<SubsetDate, Set<Event<JavaEvent>>>> residualsAndUsefulEvents = new HashMap<>();
+				Map<JavaEvent, ResidualArtifact> residualArtifacts = new HashMap<>();
 
 				//null here is like the 'all events set'
 				//TODO use something else than null
 
-				for(JavaEvent ev : residuals.keySet()){
-					residualsAndUsefulEvents.put(ev, new Pair<>(residuals.get(ev), null));
+
+				for(JavaEvent ev : residuals.keySet()) {
+					residualArtifacts.put(ev, new ResidualArtifact(ev, residuals.get(ev), null));
 				}
 
 				Map<JavaMethodIdentifier, Set<JavaEvent>> methodShadows = new HashMap<>();
@@ -282,28 +303,45 @@ public class PropertyTransformer extends SceneTransformer{
 					methodShadows.put(method, localMethodShadows);
 				}
 
+				Map<JavaMethodIdentifier, CFG<Unit, JavaEvent>> wholeProgramCFGApproximations = new HashMap<>();
+				Set<Event<JavaEvent>> instrumentedEvents = null;
+
+					//methodFSM not keeping only reachable methods
+					for (JavaMethodIdentifier method : cfga.methodCFG.keySet()) {
+						if (method.toString().contains("transactionGreylistedMenu")) {
+							System.out.print("");
+						}
+
+						CFG<Unit, JavaEvent> wholeProgramCFG = cfga.methodCFGToWholeProgramCFG(method);
+						wholeProgramCFGApproximations.put(method, wholeProgramCFG);
+					}
+
+
 				Aliasing aliasing = new JavaFlowSensitiveAliasing();
 				boolean changed;
 
 				boolean firstTime = true;
 				do{
 					changed = false;
-					Map<JavaEvent, Pair<SubsetDate, Set<Event<JavaEvent>>>> residualsAndUsefulEvents1
-							= ControlFlowResidualAnalysis.IntraProceduralControlFlowAnalysis(residualsAndUsefulEvents,
+
+					{
+
+					Map<JavaEvent, ResidualArtifact> residualArtifacts1
+							= ControlFlowResidualAnalysis.IntraProceduralControlFlowAnalysis(wholeProgramCFGApproximations, instrumentedEvents, residualArtifacts,
 							allShadows,
 							cfga,
 							aliasing,
 							methodShadows);
 
-					for(JavaEvent ev : residualsAndUsefulEvents1.keySet()){
-						if(residualsAndUsefulEvents.get(ev).first.transitions.size() != (residualsAndUsefulEvents1.get(ev).first.transitions.size())){
+					for(JavaEvent ev : residualArtifacts1.keySet()){
+						if(residualArtifacts.get(ev).fullDate.transitions.size() != (residualArtifacts1.get(ev).fullDate.transitions.size())){
 							changed = true;
 							break;
 						}
 
 						//needed since leaving residualsAndUsefulEvents.get(ev).second as null from orphan shadows
 						//TODO make this prettier
-						if(!firstTime && residualsAndUsefulEvents.get(ev).second.size() != residualsAndUsefulEvents1.get(ev).second.size()){
+						if(!firstTime && !residualArtifacts.get(ev).eventsAssociatedWithTransitions.equals(residualArtifacts1.get(ev).eventsAssociatedWithTransitions)){
 							changed = true;
 							break;
 						}
@@ -311,10 +349,28 @@ public class PropertyTransformer extends SceneTransformer{
 
 					firstTime = false;
 
-					residualsAndUsefulEvents = residualsAndUsefulEvents1;
+					residualArtifacts = residualArtifacts1;
+
+						wholeProgramCFGApproximations = cfga.methodCFG;
+
+						instrumentedEvents = new HashSet<>();
+
+						for(ResidualArtifact residualArtifact : residualArtifacts.values()){
+							if(residualArtifact.eventsAssociatedWithTransitions != null){
+								for(Event event : (Collection<Event>) residualArtifact.eventsAssociatedWithTransitions.keySet()) {
+									if(residualArtifact.eventsAssociatedWithTransitions.get(event) != null
+											&& ((Collection<Event>) residualArtifact.eventsAssociatedWithTransitions.get(event)).size() > 0) {
+										instrumentedEvents.add(event);
+									}
+								}
+							}
+						}
+					}
+
 				}while(changed);
 
-				Pair<SubsetDate, Set<Event<JavaEvent>>> union = ControlFlowResidualAnalysis.residualsAndEventsUnionWithoutReductions(property, aliasing, residualsAndUsefulEvents);
+				Pair<SubsetDate, Set<Event<JavaEvent>>> union = ControlFlowResidualAnalysis.residualsAndEventsUnionWithoutReductions(property, aliasing, residualArtifacts);
+
 
                 eventsToMonitorFor.put(property, union.second);
 

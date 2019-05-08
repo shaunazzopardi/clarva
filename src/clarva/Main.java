@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Set;
 
 import clarva.java.PropertyTransformer;
+import com.google.common.collect.Lists;
 import com.google.common.io.Files;
 import fj.data.Option;
 import fsm.helper.Pair;
@@ -29,17 +30,25 @@ public class Main {
 	public static void main(String[] args) {
 		if(args.length < 3) {
 			System.out.println("Arguments must specify: (0) language to be analysed (options: java) " +
-					"(1) property files followed by the " +
-					"(2) program directory, and finally the (3) main method.");
+					"(1) property file followed by the " +
+					"(2) program directory, " +
+					"(3) the main class, and " +
+					"finally any other (4) entry methods to the application (e.g. the run method of any Thread, or the methods offered by an API).");
 			return;
 		}
 
 		if(args[0].equals("java")) {
-			List<String> properties = Arrays.asList(Arrays.copyOfRange(args, 1, args.length - 2));
+			String property = args[1];//Arrays.asList(Arrays.copyOfRange(args, 1, args.length - 2));
 //		properties.remove(properties.size()-1);
+			List<String> properties = new ArrayList<>();
+			properties.add(property);
 
-			String programPath = args[args.length - 2];
-			String mainClass = args[args.length - 1];
+			String programPath = args[2];
+			String mainClass = args[3];
+			List<String> entryPoints = new ArrayList<>();
+			for(int i = 4; i < args.length; i++) {
+				entryPoints.add(args[args.length - 1]);
+			}
 
 			PropertyTransformer.generateFiniteStateMachines(properties);
 
@@ -53,7 +62,7 @@ public class Main {
 //			packagesToConsider.add("java.lang.invoke.LambdaMetafactory");
 		//	packagesToConsider.add("java.util.*");
 //			//	packagesToConsider.add("java.io.*");
-		   	initializeSoot(mainClass, programPath, packagesToConsider);
+		   	initializeSoot(mainClass, entryPoints, programPath, packagesToConsider);
 
 //			G.reset();
 
@@ -71,7 +80,7 @@ public class Main {
 	}
 	
 	  @SuppressWarnings("static-access")
-	  private static void initializeSoot(String mainClass, String sootCp, Set<String> packagesToConsider) {
+	  private static void initializeSoot(String mainClass, List<String> entryPoints, String sootCp, Set<String> packagesToConsider) {
 	    G.v().reset();
 	    Options.v().set_whole_program(true);
 //	    Options.v().setPhaseOption("jtp", "enabled:true");
@@ -152,9 +161,15 @@ public class Main {
 	    SootMethod methodByName = c.getMethodByName("main");
 	    List<SootMethod> ePoints = new LinkedList<>();
 	    ePoints.add(methodByName);
-		  SootClass cc = Scene.v().forceResolve("main.java.paymentapp.UserUI", SootClass.BODIES);
 
-		  ePoints.add(cc.getMethodByName("run"));
+	    for(String entryPoint : entryPoints){
+	    	String className = entryPoint.replaceAll("\\.[^\\.]+$", "");
+	    	String methodName = entryPoint.replaceAll(".+\\.(?=[^\\.]+$)", "");
+	    	SootClass classs = Scene.v().forceResolve(className, SootClass.BODIES);
+	    	ePoints.add(classs.getMethodByName(methodName));
+		}
+//
+//		  ePoints.add(cc.getMethodByName("run"));
 	    Scene.v().setEntryPoints(ePoints);
 	    // Add a transformer
 	    PackManager.v().getPack("wjtp")

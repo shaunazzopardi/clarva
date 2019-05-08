@@ -1,20 +1,13 @@
 package clarva.analysis;
 
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import clarva.analysis.cfg.CFG;
 import clarva.analysis.cfg.CFGEvent;
 import clarva.java.JavaEvent;
 import clarva.java.JavaMethodIdentifier;
 import clarva.matching.Aliasing;
-import clarva.matching.MethodIdentifier;
 import fsm.Event;
 import fsm.Transition;
 import fsm.date.DateFSM;
@@ -22,8 +15,6 @@ import fsm.date.DateLabel;
 import fsm.date.SubsetDate;
 import fsm.date.events.DateEvent;
 import fsm.helper.Pair;
-import jas.Method;
-import soot.util.ArraySet;
 
 public class ControlFlowResidualAnalysis {
 
@@ -123,47 +114,106 @@ public class ControlFlowResidualAnalysis {
 		return residuals;
 	}
 
-	public static <St, T extends CFGEvent, S extends JavaMethodIdentifier> Map<T, Pair<SubsetDate, Set<Event<T>>>> IntraProceduralControlFlowAnalysis(
-			Map<T, Pair<SubsetDate, Set<Event<T>>>> residuals,
+
+	public static <St, T extends CFGEvent, S extends JavaMethodIdentifier> Map<T, ResidualArtifact> IntraProceduralControlFlowAnalysis(
+            Map<S, CFG<St, T>> wholeProgramCFGApproximations,
+            Set<Event<T>> instrumentedEvents,
+			Map<T, ResidualArtifact> residuals,
 			Set<T> allShadows,
             CFGAnalysis<St, T, S> cfga,
 			Aliasing<T> aliasing,
 			Map<S, Set<T>> methodShadows) {
 
-		Map<S, CFG<St, T>> wholeProgramCFGApproximations = new HashMap<>();
 
-		//methodFSM not keeping only reachable methods
-		for (S method : cfga.methodCFG.keySet()) {
-			if (method.toString().contains("transactionGreylistedMenu")) {
-				System.out.print("");
-			}
-
-			CFG<St, T> wholeProgramCFG = cfga.methodCFGToWholeProgramCFG(method);
-			wholeProgramCFGApproximations.put(method, wholeProgramCFG);
-		}
-
-		Map<T, Pair<SubsetDate, Set<Event<T>>>> localShadowToResidual = new HashMap<>();
+		Set<ResidualArtifact> localShadowToResidual = new HashSet<>();
 
 		for (CFG<St, T> approx : wholeProgramCFGApproximations.values()) {
-
-			Set<T> shadowsUpToMustAlias = paritionUpToMustAlias(methodShadows.get(approx.methodID), aliasing);
-			shadowsUpToMustAlias.retainAll(residuals.keySet());
-
+			if(approx.methodID == null){
+				continue;
+			}
 			String methodName = approx.methodID.toString();
+			Set<T> shadowsUpToMustAlias;
+
+			if(methodShadows.get(approx.methodID) == null){
+				shadowsUpToMustAlias = new HashSet<>();
+				shadowsUpToMustAlias.add((T) new JavaEvent());
+			} else {
+				shadowsUpToMustAlias = paritionUpToMustAlias(methodShadows.get(approx.methodID), aliasing);
+				shadowsUpToMustAlias.retainAll(residuals.keySet());
+			}
+
 			if(methodName.contains("transactionGreylistedMenu")){
 				System.out.print("");
 			}
 
 			for (T shadow : shadowsUpToMustAlias) {
 
-				SubsetDate oldResidual = residuals.get(shadow).first;
-				Pair<SubsetDate, Set<Event<T>>> newResidualAndUsefulEvents = cfga.sufficientDATETransitionsWithSynch(shadow, approx, oldResidual, aliasing, residuals.get(shadow).second);
+				SubsetDate oldResidual = residuals.get(shadow).fullDate;
+				ResidualArtifact newResidualAndUsefulEvents
+						= cfga.sufficientDATETransitionsWithSynch(shadow, approx, oldResidual, aliasing, instrumentedEvents);//residuals.get(shadow).second);
+//				Pair<SubsetDate, Set<Event<T>>> newResidualAndUsefulEvents
+//						= cfga.sufficientDATETransitionsWithSynch(shadow, approx, oldResidual, aliasing, instrumentedEvents);//residuals.get(shadow).second);
 
-				localShadowToResidual.put(shadow, newResidualAndUsefulEvents);
+				localShadowToResidual.add(newResidualAndUsefulEvents);
 			}
 		}
 
-		return localShadowToResidual;
+
+
+		Map<T, ResidualArtifact> reducedLocalShadowToResidual = new HashMap<>();
+
+		for(ResidualArtifact<T> residualArtifact : localShadowToResidual){
+			T shadow = (T) residualArtifact.shadow;
+//			SubsetDate date = residualArtifact.fullDate;
+
+			Map<Event<T>, Set<Transition<String, DateLabel>>> eventsAssociatedWithTransitions = residualArtifact.eventsAssociatedWithTransitions;
+			Map<Event<T>, Set<Transition<String, DateLabel>>> newEventsAssociatedWithTransitions = new HashMap<Event<T>, Set<Transition<String, DateLabel>>>();
+
+			for(Event<T> event : eventsAssociatedWithTransitions.keySet()){
+				Set<Transition<String, DateLabel>> newAssociatedTransitions = new HashSet<Transition<String, DateLabel>>(eventsAssociatedWithTransitions.get(event));
+
+				if(JavaEvent.class.isAssignableFrom(event.label.getClass())){
+					JavaEvent javaEvent = (JavaEvent) event.label;
+
+					//if the event occurs outside the method being abstracted
+					if(!((JavaEvent) shadow).callingMethod.equals(javaEvent.callingMethod)) {
+
+						//check each other abstraction (we should always find one such entry, otherwise it does not occur)
+						for (ResidualArtifact residualArtifact1 : localShadowToResidual) {
+							//and if we find another entry where the event occurs in the abstracted method
+								if((((JavaEvent) residualArtifact1.shadow).callingMethod.equals(javaEvent.callingMethod))){
+
+									//then keep only the DATE transitions associated with that event in the abstraction in which it occurs
+									if(residualArtifact1.eventsAssociatedWithTransitions.containsKey(event)){
+										newAssociatedTransitions.retainAll((Collection<?>) residualArtifact1.eventsAssociatedWithTransitions.get(event));
+									} else{
+										newAssociatedTransitions.clear();
+									}
+								}
+						}
+					} else{ //else if the event occurs inside the method being abstracted, then simply replicate it
+						newAssociatedTransitions = eventsAssociatedWithTransitions.get(event);
+					}
+				}
+
+				if(newAssociatedTransitions.size() > 0) {
+					newEventsAssociatedWithTransitions.put(event, newAssociatedTransitions);
+				}
+			}
+
+			if(newEventsAssociatedWithTransitions.size() > 0) {
+				Set<Transition<String,DateLabel>> usedTransitions = new HashSet<>();
+				for(Set<Transition<String,DateLabel>> set : newEventsAssociatedWithTransitions.values()){
+					usedTransitions.addAll(set);
+				}
+
+				SubsetDate subsetDate = new SubsetDate(residualArtifact.fullDate, usedTransitions);
+				reducedLocalShadowToResidual.put(shadow, new ResidualArtifact(residualArtifact.shadow, subsetDate, newEventsAssociatedWithTransitions));
+			}
+		}
+
+
+		return reducedLocalShadowToResidual;
 	}
 //			}
 
@@ -180,6 +230,10 @@ public class ControlFlowResidualAnalysis {
 	public static <T extends CFGEvent> Set<T> paritionUpToMustAlias(Set<T> shadows, Aliasing aliasing){
 		Set<T> allShadowsUpToMustAlias = new HashSet<>();
 		Map<T, Set<T>> mustAlias = new HashMap<>();
+
+		if(shadows == null){
+			System.out.print("");
+		}
 
  		for(T s : shadows){
  			Set<T> must = new HashSet<>();
@@ -293,15 +347,15 @@ public class ControlFlowResidualAnalysis {
 		}
 	}
 
-	public static <T extends CFGEvent> Pair<SubsetDate, Set<Event<T>>> residualsAndEventsUnionWithoutReductions(DateFSM date, Aliasing aliasing, Map<T, Pair<SubsetDate, Set<Event<T>>>> residuals){
+	public static <T extends CFGEvent> Pair<SubsetDate, Set<Event<T>>> residualsAndEventsUnionWithoutReductions(DateFSM date, Aliasing aliasing, Map<T, ResidualArtifact> residuals){
 
-		Map<T, Pair<SubsetDate, Set<Event<T>>>> cleanResidualSet = new HashMap<>();
+		Map<T, ResidualArtifact> cleanResidualSet = new HashMap<>();
 		Set<Set<T>> mayAliasingSets = new HashSet<>();
 
 		for(T shadow : residuals.keySet()) {
 			Set<T> aliasingSet = new HashSet<>();
 
-			if (residuals.get(shadow).first.transitions.size() != 0 && residuals.get(shadow).second.size() != 0) {
+			if (residuals.get(shadow).fullDate.transitions.size() != 0 && !residuals.get(shadow).eventsAssociatedWithTransitions.isEmpty()) {
 				cleanResidualSet.put(shadow, residuals.get(shadow));
 
 				for (T shadow2 : residuals.keySet()) {
@@ -327,13 +381,12 @@ public class ControlFlowResidualAnalysis {
 			cleanedAliasingSet.retainAll(cleanResidualSet.keySet());
 
 			for(T shadow : cleanedAliasingSet){
-				SubsetDate subsetDate = cleanResidualSet.get(shadow).first;
-
-				usedTransitions.addAll(subsetDate.transitions);
-
-				Set<Event<T>> instrumentedEvents = cleanResidualSet.get(shadow).second;
-
-				usedEvents.addAll(instrumentedEvents);
+				for(Event<T> event : (Collection<? extends Event<T>>) cleanResidualSet.get(shadow).eventsAssociatedWithTransitions.keySet()) {
+					if(((JavaEvent) event.label).callingMethod.equals(((JavaEvent)shadow).callingMethod)){
+						usedTransitions.addAll((Collection<? extends Transition<String, DateLabel>>) cleanResidualSet.get(shadow).eventsAssociatedWithTransitions.get(event));
+						usedEvents.add(event);
+					}
+				}
 			}
 
 			//this automatically performs reachability reduction
@@ -351,7 +404,7 @@ public class ControlFlowResidualAnalysis {
 		}
 
 
-		if(residuals.size() != 0){
+		if(setsOfDates.size() != 0){
 			Iterator<SubsetDate> dateIterator = setsOfDates.iterator();
 
 			SubsetDate unionOfResiduals = null;
@@ -372,7 +425,7 @@ public class ControlFlowResidualAnalysis {
 			return new Pair(unionOfResiduals, allUsefulEvents);
 		}
 		else{
-			return null;
+			return new Pair(new SubsetDate(date, new ArrayList<Transition<String, DateLabel>>()), new HashSet<>());
 		}
 	}
 	

@@ -5,6 +5,7 @@ import clarva.analysis.cfg.CFG;
 import clarva.analysis.cfg.CFGEvent;
 import clarva.analysis.cfg.CFGState;
 import clarva.matching.MethodIdentifier;
+import fj.P;
 import fsm.Event;
 import fsm.FSM;
 import fsm.State;
@@ -51,6 +52,7 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
     public JavaCFGAnalysis(MethodsAnalysis ma) {
         super();
         this.ma = ma;
+        cfgAnalysis = this;
 
         mainMethods.add(JavaMethodIdentifier.get(Scene.v().getMainMethod()));
 
@@ -96,6 +98,9 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
             fsm.methodID = JavaMethodIdentifier.get(method);
             fsm.name = method.method().getName();
             methodCFG.put(JavaMethodIdentifier.get(method), fsm);
+            if(fsm == null){
+                System.out.print("");
+            }
             CFGMethod.put(fsm, JavaMethodIdentifier.get(method));
         }
 
@@ -131,8 +136,6 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
         this.tagShadowsWithBindingRepresentatives();
 //        generateMethodCallGraph();
         shadowsOutsideCall();
-
-        cfgAnalysis = this;
     }
 
     //methods contains all methods that match events, not methods that call events
@@ -219,10 +222,18 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
         return false;
     }
 
-    public void createCFG(JavaMethodIdentifier method) {
-        if(method.toString().contains("transactionGreylistedMenu")){
+    @Override
+    public void createCFG(MethodIdentifier methodID) {
+        if(methodID == null){
             System.out.print("");
         }
+        if(JavaMethodIdentifier.class.isAssignableFrom(methodID.getClass())) {
+
+            JavaMethodIdentifier method = (JavaMethodIdentifier) methodID;
+
+            if (method.toString().contains("transactionGreylistedMenu")) {
+                System.out.print("");
+            }
 
 //        Set<JavaMethodIdentifier> methodsCalledByMethod;
 //        if (this.allMethodsSucceeding.get(method) == null) {
@@ -232,35 +243,40 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
 //            methodsCalledByMethod = this.allMethodsSucceeding.get(method);
 //        }
 
-        //If method cfg was created
-        if (methodGraph.containsKey(method)) {
-            //Get cfg of the method
-            UnitGraph sootCFG = methodGraph.get(method);
-            //Get (empty) fsm of the method
-            CFG<Unit, JavaEvent> cfg = methodCFG.get(method);
+            //If method cfg was created
+            if (methodGraph.containsKey(method)) {
+                //Get cfg of the method
+                UnitGraph sootCFG = methodGraph.get(method);
+                //Get (empty) fsm of the method
+                CFG<Unit, JavaEvent> cfg = methodCFG.get(method);
 
-            Iterator<Unit> unitIterator = sootCFG.iterator();
-
-            Unit currentUnit;
-            while (unitIterator.hasNext()) {
-                currentUnit = unitIterator.next();
-                statementCalledBy.put(currentUnit, method);
-
-                if(currentUnit.toString().contains("black")){
-                    System.out.print("");
+                if(cfg == null){
+                    methodCFG.put(method, new CFG());
+                    cfg = methodCFG.get(method);
                 }
 
-                //This takes care of not having duplicates states
-                //with the same unit.
-                //Note: The same statements at different points of a program
-                //correspond to different statements.
-                State<Integer, JavaEvent> currentUnitState = cfg.getOrAddState(new CFGState<Unit>(currentUnit));
+                Iterator<Unit> unitIterator = sootCFG.iterator();
 
-                if (ma.unitsContainingMethods.get(currentUnit) != null
-                        && this.methodCFG.keySet().contains(JavaMethodIdentifier.get(ma.unitsContainingMethods.get(currentUnit)))) {
-                    MethodOrMethodContext methodCall = ma.unitsContainingMethods.get(currentUnit);
-                    currentUnitState.setInternalFSM(methodCFG.get(JavaMethodIdentifier.get(methodCall)));
-                }
+                Unit currentUnit;
+                while (unitIterator.hasNext()) {
+                    currentUnit = unitIterator.next();
+                    statementCalledBy.put(currentUnit, method);
+
+                    if (currentUnit.toString().contains("black")) {
+                        System.out.print("");
+                    }
+
+                    //This takes care of not having duplicates states
+                    //with the same unit.
+                    //Note: The same statements at different points of a program
+                    //correspond to different statements.
+                    State<Integer, JavaEvent> currentUnitState = cfg.getOrAddState(new CFGState<Unit>(currentUnit));
+
+                    if (ma.unitsContainingMethods.get(currentUnit) != null
+                            && this.methodCFG.keySet().contains(JavaMethodIdentifier.get(ma.unitsContainingMethods.get(currentUnit)))) {
+                        MethodOrMethodContext methodCall = ma.unitsContainingMethods.get(currentUnit);
+                        currentUnitState.setInternalFSM(methodCFG.get(JavaMethodIdentifier.get(methodCall)));
+                    }
 
 //                Moved below to end of MethodsAnalysis.allMethodCalls()
 //
@@ -277,99 +293,100 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
 //                }
 
                     //If unit is not caught by some action in the property
-                //then create a transition from each predecessor state
-                //with the empty action to the current unit state
-                //and create a transition from the current unit state
-                //to each successor state with the empty action
-                if (!ma.unitShadows.containsKey(currentUnit)) {
+                    //then create a transition from each predecessor state
+                    //with the empty action to the current unit state
+                    //and create a transition from the current unit state
+                    //to each successor state with the empty action
+                    if (!ma.unitShadows.containsKey(currentUnit)) {
 
-                    for (Unit succ : sootCFG.getSuccsOf(currentUnit)) {
-                        State<Integer, JavaEvent> succState = cfg.getOrAddState(new CFGState<Unit>(succ));
+                        for (Unit succ : sootCFG.getSuccsOf(currentUnit)) {
+                            State<Integer, JavaEvent> succState = cfg.getOrAddState(new CFGState<Unit>(succ));
 
-                        //fsm.addTransition(currentUnitState, this.tauAction, succState);
-                        cfg.addTransition(currentUnitState, this.epsilonAction, succState);
-                    }
+                            //fsm.addTransition(currentUnitState, this.tauAction, succState);
+                            cfg.addTransition(currentUnitState, this.epsilonAction, succState);
+                        }
 
-                    MethodOrMethodContext currentUnitMethod = ma.unitsContainingMethods.get(currentUnit);
-                    //If the unit is not atomic (i.e. it has a cfg and fsm)
-                    //then set the unit's fsm reference.
-                    if (methodCFG.containsKey(JavaMethodIdentifier.get(currentUnitMethod))) {
-                        currentUnitState.setInternalFSM(methodCFG.get(JavaMethodIdentifier.get(currentUnitMethod)));
+                        MethodOrMethodContext currentUnitMethod = ma.unitsContainingMethods.get(currentUnit);
+                        //If the unit is not atomic (i.e. it has a cfg and fsm)
+                        //then set the unit's fsm reference.
+                        if (methodCFG.containsKey(JavaMethodIdentifier.get(currentUnitMethod))) {
+                            currentUnitState.setInternalFSM(methodCFG.get(JavaMethodIdentifier.get(currentUnitMethod)));
 //                        methodsCalledByMethod.add(JavaMethodIdentifier.get(currentUnitMethod));
-                        //						allStatesNull = false;
-                        //						methodsCalledByMethod.add(currentUnitMethod);
+                            //						allStatesNull = false;
+                            //						methodsCalledByMethod.add(currentUnitMethod);
+                        }
+                    } else {
+
+                        List<JavaEvent> shadows = ma.unitShadows.get(currentUnit);
+
+                        State<Integer, JavaEvent> source = currentUnitState;
+
+                        if (source.label == 18) {
+                            System.out.print("");
+                        }
+
+                        for (int i = 0; i < shadows.size() - 1; i++) {
+                            State<Integer, JavaEvent> destination = cfg.getOrAddState(new CFGState<>(new JNopStmt()));
+                            Event<JavaEvent> event = new Event<JavaEvent>(shadows.get(i));
+                            allEventShadows.add(event);
+                            cfg.addTransition(source, event, destination);
+                            source = destination;
+                        }
+
+                        for (Unit succ : sootCFG.getSuccsOf(currentUnit)) {
+                            State<Integer, JavaEvent> destination = cfg.getOrAddState(new CFGState<>(succ));
+                            Event<JavaEvent> event = new Event<JavaEvent>(shadows.get(shadows.size() - 1));
+                            allEventShadows.add(event);
+
+                            cfg.addTransition(source, event, destination);
+                        }
+
                     }
-                } else {
-
-                    List<JavaEvent> shadows = ma.unitShadows.get(currentUnit);
-
-                    State<Integer, JavaEvent> source = currentUnitState;
-
-                    if(source.label == 18){
-                        System.out.print("");
-                    }
-
-                    for (int i = 0; i < shadows.size() - 1; i++) {
-                        State<Integer, JavaEvent> destination = cfg.getOrAddState(new CFGState<>(new JNopStmt()));
-                        Event<JavaEvent> event = new Event<JavaEvent>(shadows.get(i));
-                        allEventShadows.add(event);
-                        cfg.addTransition(source, event, destination);
-                        source = destination;
-                    }
-
-                    for (Unit succ : sootCFG.getSuccsOf(currentUnit)) {
-                        State<Integer, JavaEvent> destination = cfg.getOrAddState(new CFGState<>(succ));
-                        Event<JavaEvent> event = new Event<JavaEvent>(shadows.get(shadows.size() - 1));
-                        allEventShadows.add(event);
-
-                        cfg.addTransition(source, event, destination);
-                    }
+                    //How to handle uponreturning and uponthrowing??
+                    //	}
 
                 }
-                //How to handle uponreturning and uponthrowing??
-                //	}
+                for (Unit init : sootCFG.getHeads()) {
+                    State<Integer, JavaEvent> initState = cfg.labelToState.get(new CFGState(init));
+                    cfg.addInitialState(initState);
+                }
 
-            }
-            for (Unit init : sootCFG.getHeads()) {
-                State<Integer, JavaEvent> initState = cfg.labelToState.get(new CFGState(init));
-                cfg.addInitialState(initState);
-            }
+                for (Unit tail : sootCFG.getTails()) {
+                    State<Integer, JavaEvent> finalState = cfg.labelToState.get(new CFGState(tail));
+                    cfg.addFinalState(finalState);
+                }
 
-            for (Unit tail : sootCFG.getTails()) {
-                State<Integer, JavaEvent> finalState = cfg.labelToState.get(new CFGState(tail));
-                cfg.addFinalState(finalState);
-            }
+                //			//Remove states with only empty outgoing transitions (i.e. with statements that do not match actions)
+                //			Set<State<Unit, DateLabel>> emptyStates = new HashSet<State<Unit, DateLabel>>();
+                //
+                //			for(State<Unit, DateLabel> state : fsm.states){
+                //				if(state.fsm != null){
+                //					boolean emptyState = true;
+                //					for(Action<DateLabel> action : state.outgoingTransitions.keySet()){
+                //						if(!action.equals(emptyAction)){
+                //							emptyState = false;
+                //						}
+                //					}
+                //
+                //					if(emptyState){
+                //						emptyStates.add(state);
+                //					}
+                //				}
+                //			}
+                //
+                //	fsm.reduced(emptyStates, false);
+                cfg.reduce();
 
-            //			//Remove states with only empty outgoing transitions (i.e. with statements that do not match actions)
-            //			Set<State<Unit, DateLabel>> emptyStates = new HashSet<State<Unit, DateLabel>>();
-            //
-            //			for(State<Unit, DateLabel> state : fsm.states){
-            //				if(state.fsm != null){
-            //					boolean emptyState = true;
-            //					for(Action<DateLabel> action : state.outgoingTransitions.keySet()){
-            //						if(!action.equals(emptyAction)){
-            //							emptyState = false;
-            //						}
-            //					}
-            //
-            //					if(emptyState){
-            //						emptyStates.add(state);
-            //					}
-            //				}
-            //			}
-            //
-            //	fsm.reduced(emptyStates, false);
-            cfg.reduce();
-
-            methodCFG.put(method, cfg);
+                methodCFG.put(method, cfg);
 //            this.selfContainedMethod(method);
-            //			System.out.println(cfg);
+                //			System.out.println(cfg);
+            }
+
+
+            //	methodNoDirectMethodCall.put(method, noDirectMethodCalls);
+            //	this.allStatesNull.put(method, allStatesNull);
+            //return fsm;
         }
-
-
-        //	methodNoDirectMethodCall.put(method, noDirectMethodCalls);
-        //	this.allStatesNull.put(method, allStatesNull);
-        //return fsm;
     }
 
     public void tagShadowsWithBindingRepresentatives() {
@@ -458,6 +475,9 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
         methodsAlreadyTraversed.add(method);
 
         List<Event<JavaEvent>> before = new ArrayList<>();
+        if(method == null || method.methodOrMethodContext == null){
+            System.out.print("");
+        }
 
             if (!method.methodOrMethodContext.method().isEntryMethod()
                     && ma.reachableMethods.contains(method.methodOrMethodContext)) {
@@ -466,6 +486,9 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
 
                 if(ma.methodInvokedWhere.containsKey(method.methodOrMethodContext)) {
                     for (InvokeExpr call : ma.methodInvokedWhere.get(method.methodOrMethodContext)) {
+                        if(!shadowsBeforeCall.containsKey(call)){
+                            System.out.print("");
+                        }
                         before.addAll(shadowsBeforeCall.get(call));
                         methodsCallingMethod.add(JavaMethodIdentifier.get(ma.invokeExprInMethod.get(call)));
                     }
@@ -528,136 +551,127 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
     }
 //
 
+    public void shadowsOutsideCallInsideCallingMethod(InvokeExpr call) {
+        Set<Event<JavaEvent>> before = new HashSet<>();
+        Set<Event<JavaEvent>> after = new HashSet<>();
 
+        Unit invokeExprUnit = ma.invokeExprToUnit.get(call);
+        MethodOrMethodContext method = call.getMethod();
 
-    public void shadowsOutsideCall() {
-        //get the set of invocations of the methods we are analysing
-        List<InvokeExpr> relevantCalls = new ArrayList<InvokeExpr>();
-        for (JavaMethodIdentifier method : this.methodCFG.keySet()) {
-            if (ma.methodInvokedWhere.get(method.methodOrMethodContext) != null) {
-                relevantCalls.addAll(ma.methodInvokedWhere.get(method.methodOrMethodContext));
-            }
-        }
+        JavaMethodIdentifier callingMethod = (JavaMethodIdentifier) this.statementCalledBy.get(invokeExprUnit);
 
-        //for each invocation, traverse the method it appears in both backwards and forwards till the start and end of
-        //the method are reached, and collect the events encountered
-        for (InvokeExpr call : relevantCalls) {
-            Set<Event<JavaEvent>> before = new HashSet<>();
-            Set<Event<JavaEvent>> after = new HashSet<>();
+        if (callingMethod != null && this.methodCFG.keySet().contains(callingMethod)) {
 
-            Unit invokeExprUnit = ma.invokeExprToUnit.get(call);
-            MethodOrMethodContext method = call.getMethod();
+            CFG<Unit, JavaEvent> callingMethodCFG = this.methodCFG.get(callingMethod);
+            State<Integer, JavaEvent> stateInCallingMethodCFG = callingMethodCFG.labelToState.get(new CFGState(invokeExprUnit));
 
-            JavaMethodIdentifier callingMethod = (JavaMethodIdentifier) this.statementCalledBy.get(invokeExprUnit);
+            //the below is needed just in case of loops, so there is no infinite looping
+            List<State<Integer, JavaEvent>> alreadyTraversed = new ArrayList<>();
 
-            if (callingMethod != null && this.methodCFG.keySet().contains(callingMethod)) {
+            List<State<Integer, JavaEvent>> currentStates = new ArrayList<>();
+            currentStates.add(stateInCallingMethodCFG);
 
-                CFG<Unit, JavaEvent> callingMethodCFG = this.methodCFG.get(callingMethod);
-                State<Integer, JavaEvent> stateInCallingMethodCFG = callingMethodCFG.labelToState.get(new CFGState(invokeExprUnit));
+            //while we haven't traversed all possible previous states/statements
+            while (currentStates.size() > 0) {
+                List<State<Integer, JavaEvent>> newCurrentStates = new ArrayList<>();
 
-                //the below is needed just in case of loops, so there is no infinite looping
-                List<State<Integer, JavaEvent>> alreadyTraversed = new ArrayList<>();
+                //for each state
+                for (int i = 0; i < currentStates.size(); i++) {
+                    State<Integer, JavaEvent> state = currentStates.get(i);
 
-                List<State<Integer, JavaEvent>> currentStates = new ArrayList<>();
-                currentStates.add(stateInCallingMethodCFG);
-
-                //while we haven't traversed all possible previous states/statements
-                while (currentStates.size() > 0) {
-                    List<State<Integer, JavaEvent>> newCurrentStates = new ArrayList<>();
-
-                    //for each state
-                    for (int i = 0; i < currentStates.size(); i++) {
-                        State<Integer, JavaEvent> state = currentStates.get(i);
-
-                        //for each incoming transition dateEvent
-                        for (Event<JavaEvent> event : state.incomingTransitions.keySet()) {
-                            //if the dateEvent is not the empty dateEvent
-                            //then add it to the before set
-                            if (!event.label.epsilon) {
-                                before.add(event);
-                            }
-                            //add all incoming states with that dateEvent to the states to propagate backwards next
-                            Set<Integer> incomingStateLabels = state.incomingTransitions.get(event);
-                            for(Integer label : incomingStateLabels){
-                                newCurrentStates.add(state.parent.labelToState.get(label));
-                            }
+                    //for each incoming transition dateEvent
+                    for (Event<JavaEvent> event : state.incomingTransitions.keySet()) {
+                        //if the dateEvent is not the empty dateEvent
+                        //then add it to the before set
+                        if (!event.label.epsilon) {
+                            before.add(event);
                         }
-
-                        //if the current state represents an invocation to another method
-                        //i.e. if it has an internal fsm
-                        //then add all relevant shadows of the method to the before set
-                        for(State<Integer, JavaEvent> nextState : newCurrentStates) {
-                            if (nextState.getInternalFSM() != null) {
-                                JavaMethodIdentifier methodCalledHere = this.CFGMethod.get(nextState.getInternalFSM());
-                                if (methodCalledHere == null) nextState.setInternalFSM(null);
-                                else if (!methodCalledHere.methodOrMethodContext.equals(method)) {
-                                    before.addAll(this.relevantShadows(methodCalledHere, callingMethod).first);// method));
-                                }
-                            }
+                        //add all incoming states with that dateEvent to the states to propagate backwards next
+                        Set<Integer> incomingStateLabels = state.incomingTransitions.get(event);
+                        for(Integer label : incomingStateLabels){
+                            newCurrentStates.add(state.parent.labelToState.get(label));
                         }
                     }
 
-                    alreadyTraversed.addAll(currentStates);
-                    newCurrentStates.removeAll(alreadyTraversed);
-                    currentStates = newCurrentStates;
-                }
-
-
-                //calculate after
-
-                alreadyTraversed = new ArrayList<State<Integer, JavaEvent>>();
-                currentStates = new ArrayList<State<Integer, JavaEvent>>();
-                currentStates.add(stateInCallingMethodCFG);
-                while (currentStates.size() > 0) {
-                    List<State<Integer, JavaEvent>> newCurrentStates = new ArrayList<State<Integer, JavaEvent>>();
-
-                    for (int i = 0; i < currentStates.size(); i++) {
-                        State<Integer, JavaEvent> state = currentStates.get(i);
-
-                        for (Event<JavaEvent> event : state.outgoingTransitions.keySet()) {
-                            if (!event.label.epsilon) {
-                                after.add(event);
-                            }
-                            Set<Integer> outgoingStateLabels = state.outgoingTransitions.get(event);
-                            for(Integer label : outgoingStateLabels){
-                                newCurrentStates.add(state.parent.labelToState.get(label));
-                            }
-                        }
-
-                        if (state.getInternalFSM() != null) {
-                            JavaMethodIdentifier methodCalledHere = this.CFGMethod.get(state.getInternalFSM());
-                            if (methodCalledHere == null) state.setInternalFSM(null);
-
+                    //if the current state represents an invocation to another method
+                    //i.e. if it has an internal fsm
+                    //then add all relevant shadows of the method to the before set
+                    for(State<Integer, JavaEvent> nextState : newCurrentStates) {
+                        if (nextState.getInternalFSM() != null) {
+                            JavaMethodIdentifier methodCalledHere = this.CFGMethod.get(nextState.getInternalFSM());
+                            if (methodCalledHere == null) nextState.setInternalFSM(null);
                             else if (!methodCalledHere.methodOrMethodContext.equals(method)) {
-                                after.addAll(this.relevantShadows(methodCalledHere, callingMethod).first);//method));
-                                //								after.addAll(state.getInternalFSM().alphabet);
-                                //
-                                //								for(MethodOrMethodContext methodPossiblyInvoked : this.allMethodsSucceeding.get(methodCalledHere)){
-                                //									if(!methodPossiblyInvoked.equals(method)
-                                //											&& this.methodCFG.keySet().contains(methodPossiblyInvoked)){
-                                //										after.addAll(this.methodCFG.get(methodPossiblyInvoked).alphabet);
-                                //									}
-                                //								}
+                                before.addAll(this.relevantShadows(methodCalledHere, callingMethod).first);// method));
                             }
                         }
                     }
-
-
-                    alreadyTraversed.addAll(currentStates);
-                    newCurrentStates.removeAll(alreadyTraversed);
-                    currentStates = newCurrentStates;
                 }
 
+                alreadyTraversed.addAll(currentStates);
+                newCurrentStates.removeAll(alreadyTraversed);
+                currentStates = newCurrentStates;
             }
 
-            before.remove(epsilonAction);
-            after.remove(epsilonAction);
 
-            this.shadowsBeforeCall.put(call, before);
-            this.shadowsAfterCall.put(call, after);
+            //calculate after
+
+            alreadyTraversed = new ArrayList<State<Integer, JavaEvent>>();
+            currentStates = new ArrayList<State<Integer, JavaEvent>>();
+            currentStates.add(stateInCallingMethodCFG);
+            while (currentStates.size() > 0) {
+                List<State<Integer, JavaEvent>> newCurrentStates = new ArrayList<State<Integer, JavaEvent>>();
+
+                for (int i = 0; i < currentStates.size(); i++) {
+                    State<Integer, JavaEvent> state = currentStates.get(i);
+
+                    for (Event<JavaEvent> event : state.outgoingTransitions.keySet()) {
+                        if (!event.label.epsilon) {
+                            after.add(event);
+                        }
+                        Set<Integer> outgoingStateLabels = state.outgoingTransitions.get(event);
+                        for(Integer label : outgoingStateLabels){
+                            newCurrentStates.add(state.parent.labelToState.get(label));
+                        }
+                    }
+
+                    if (state.getInternalFSM() != null) {
+                        JavaMethodIdentifier methodCalledHere = this.CFGMethod.get(state.getInternalFSM());
+                        if (methodCalledHere == null) state.setInternalFSM(null);
+
+                        else if (!methodCalledHere.methodOrMethodContext.equals(method)) {
+                            after.addAll(this.relevantShadows(methodCalledHere, callingMethod).first);//method));
+                            //								after.addAll(state.getInternalFSM().alphabet);
+                            //
+                            //								for(MethodOrMethodContext methodPossiblyInvoked : this.allMethodsSucceeding.get(methodCalledHere)){
+                            //									if(!methodPossiblyInvoked.equals(method)
+                            //											&& this.methodCFG.keySet().contains(methodPossiblyInvoked)){
+                            //										after.addAll(this.methodCFG.get(methodPossiblyInvoked).alphabet);
+                            //									}
+                            //								}
+                        }
+                    }
+                }
+
+
+                alreadyTraversed.addAll(currentStates);
+                newCurrentStates.removeAll(alreadyTraversed);
+                currentStates = newCurrentStates;
+            }
+
         }
 
+        before.remove(epsilonAction);
+        after.remove(epsilonAction);
+
+        this.shadowsBeforeCall.put(call, before);
+        this.shadowsAfterCall.put(call, after);
+    }
+
+    public void shadowsOutsideCallArbitraryDepth() {
         for(InvokeExpr invokeExpr : shadowsBeforeCall.keySet()) {
+            if(invokeExpr.toString().contains("specialinvoke this.<de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.Benchmark: de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.InnerNode removeSomeNode(de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.InnerNode)>($stack5)")){
+                System.out.print("");
+            }
             Unit invokeExprUnit = ma.invokeExprToUnit.get(invokeExpr);
             MethodOrMethodContext method = invokeExpr.getMethod();
 
@@ -667,6 +681,10 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
         }
 
         for(InvokeExpr invokeExpr : shadowsAfterCall.keySet()) {
+            if(invokeExpr.toString().contains("specialinvoke this.<de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.Benchmark: de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.InnerNode removeSomeNode(de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.InnerNode)>($stack5)")){
+                System.out.print("");
+            }
+
             Unit invokeExprUnit = ma.invokeExprToUnit.get(invokeExpr);
             MethodOrMethodContext method = invokeExpr.getMethod();
 
@@ -675,6 +693,27 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
             shadowsAfterCall.get(invokeExpr).addAll(shadowsAfter(callingMethod));
         }
 
+    }
+
+    public void shadowsOutsideCall() {
+        //get the set of invocations of the methods we are analysing
+        List<InvokeExpr> relevantCalls = new ArrayList<InvokeExpr>();
+        for (JavaMethodIdentifier method : this.methodCFG.keySet()) {
+            if (ma.methodInvokedWhere.get(method.methodOrMethodContext) != null) {
+                relevantCalls.addAll(ma.methodInvokedWhere.get(method.methodOrMethodContext));
+            }
+        }
+     //   ma.methodInvokedWhere.get(method.methodOrMethodContext)
+        //for each invocation, traverse the method it appears in both backwards and forwards till the start and end of
+        //the method are reached, and collect the events encountered
+        for (InvokeExpr call : relevantCalls) {
+            if(call.toString().contains("specialinvoke this.<de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.Benchmark: de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.InnerNode removeSomeNode(de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.InnerNode)>($stack5)")){
+                System.out.print("");
+            }
+            shadowsOutsideCallInsideCallingMethod(call);
+        }
+
+        shadowsOutsideCallArbitraryDepth();
     }
 
 
@@ -688,6 +727,9 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
 
         if (invocations != null) {
             for (InvokeExpr invokeExpr : invocations) {
+                if(!this.shadowsBeforeCall.containsKey(invokeExpr)){
+                    System.out.print("");
+                }
                 before.addAll(this.shadowsBeforeCall.get(invokeExpr));
                 after.addAll(this.shadowsAfterCall.get(invokeExpr));
             }
