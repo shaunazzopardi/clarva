@@ -252,11 +252,12 @@ public class Matching {
         SootMethod sootMethod = method.method();
 
         //static or not both
-        Boolean methodTypeMatches = false;
+//        Boolean methodTypeMatches = false;
 
-        if ((methodEvent.staticMethod && method.method().isStatic())
-                || (!methodEvent.staticMethod && !method.method().isStatic())) methodTypeMatches = true;
-        else return false;
+        //TODO when are larva events marked as static? are they ever?
+//        if ((methodEvent.staticMethod && method.method().isStatic())
+//                || (!methodEvent.staticMethod && !method.method().isStatic())) methodTypeMatches = true;
+//        else return false;
 
         Boolean classTypeMatches = false;
         Boolean methodNameMatches = false;
