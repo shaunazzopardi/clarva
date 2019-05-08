@@ -188,9 +188,9 @@ public class JavaEvent extends CFGEvent {
                                     SootClass type1Class = ((RefType) type1Here).getSootClass();
                                     SootClass type2Class = ((RefType) type2Here).getSootClass();
 
-                                    if (!subStructureOf(type1Class, type2Class)
-                                            && !subStructureOf(type2Class, type1Class)) {
-                                        return false;
+                                    if (subStructureOf(type1Class, type2Class)
+                                            || subStructureOf(type2Class, type1Class)) {
+                                        continue;
                                     }
                                 }
                             }
@@ -236,9 +236,9 @@ public class JavaEvent extends CFGEvent {
                                     SootClass type1Class = ((RefType) type1Here).getSootClass();
                                     SootClass type2Class = ((RefType) type2Here).getSootClass();
 
-                                    if (!subStructureOf(type1Class, type2Class)
-                                            && !subStructureOf(type2Class, type1Class)) {
-                                        return false;
+                                    if (subStructureOf(type1Class, type2Class)
+                                            || subStructureOf(type2Class, type1Class)) {
+                                        continue;
                                     }
                                 }
                             }
@@ -284,9 +284,9 @@ public class JavaEvent extends CFGEvent {
                                     SootClass type1Class = ((RefType) type1Here).getSootClass();
                                     SootClass type2Class = ((RefType) type2Here).getSootClass();
 
-                                    if (!subStructureOf(type1Class, type2Class)
-                                            && !subStructureOf(type2Class, type1Class)) {
-                                        return false;
+                                    if (subStructureOf(type1Class, type2Class)
+                                            || subStructureOf(type2Class, type1Class)) {
+                                        continue;
                                     }
                                 }
                             }
@@ -330,9 +330,9 @@ public class JavaEvent extends CFGEvent {
                                     SootClass type1Class = ((RefType) type1Here).getSootClass();
                                     SootClass type2Class = ((RefType) type2Here).getSootClass();
 
-                                    if (!subStructureOf(type1Class, type2Class)
-                                            && !subStructureOf(type2Class, type1Class)) {
-                                        return false;
+                                    if (subStructureOf(type1Class, type2Class)
+                                            || subStructureOf(type2Class, type1Class)) {
+                                        continue;
                                     }
                                 }
                             }
