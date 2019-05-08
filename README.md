@@ -16,6 +16,8 @@ cLARVA (= [clara](https://github.com/Sable/clara) + [LARVA](http://www.cs.um.edu
 3. *root directory of* compiled Java program (in eclipse, the bin directory); 
 4. *Canonical name* of the Main class of program (of the form \<package-name\>.\<class-name\>); and
 4. *Entry-point methods* of the program other then the main method in the main class (e.g. a list of API methods), note that if your program uses threads then you must include your *run* method here.
+
+Example call: **java -jar clarva.jar java "./date.lrv" "./bin" main.Main server.threads.UserThread.run server.threads.AdminThread.run**
       
 **Output**: 
 1. A DATE that is a pruned version of Input (2), with which it is enough to monitor Input (3).
