@@ -4,7 +4,7 @@ import clarva.analysis.facts.Fact;
 
 import java.util.Set;
 
-public class JavaFact implements Fact  {
+public class JavaFact implements Fact {
     String declaration;
     String assertion;
 

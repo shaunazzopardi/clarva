@@ -11,29 +11,32 @@ import fsm.date.DateFSM;
 import fsm.date.DateLabel;
 import fsm.date.events.DateEvent;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class BackwardsAnalysis {
     Set<CFG> program;
     FactChecker factChecker;
     CFGAnalysis analysis;
 
-    public BackwardsAnalysis(Set<CFG> program, FactChecker factChecker){
+    public BackwardsAnalysis(Set<CFG> program, FactChecker factChecker) {
         this.program = program;
         this.factChecker = factChecker;
     }
 
     //get all states in a CFG that happen after event e
-    public Set<State> allProgramStatesAfterEvent(DateEvent e){
+    public Set<State> allProgramStatesAfterEvent(DateEvent e) {
         Set<State> states = new HashSet<>();
 
-        for(CFG cfg : program){
-            for(Object statementObject : cfg.statements){
+        for (CFG cfg : program) {
+            for (Object statementObject : cfg.statements) {
                 CFGState cfgState = (CFGState) statementObject;
                 State fsmState = (State) cfg.labelToState.get(cfgState);
-                for(Object entryObject : fsmState.incomingTransitions.entrySet()){
+                for (Object entryObject : fsmState.incomingTransitions.entrySet()) {
                     Map.Entry<Event, Set> entry = (Map.Entry<Event, Set>) entryObject;
-                    if(((DateEvent) entry.getKey().label).equals(e)){
+                    if (((DateEvent) entry.getKey().label).equals(e)) {
                         states.add(fsmState);
 //                        for(Object state : entry.getValue()){
 //                            states.add((CFGState) cfg.stateToLabel.get((State) state));
@@ -48,11 +51,11 @@ public class BackwardsAnalysis {
 
     //for each bad state in the DEA, and for each event into it
     // get all states in CFG that have an incoming transition tagged by the same event
-    public Set<State> identifyPotentialPointsOfFailure(DateFSM date, Set<CFG> program){
+    public Set<State> identifyPotentialPointsOfFailure(DateFSM date, Set<CFG> program) {
         Set<State<String, DateLabel>> badStates = date.badStates;
         Set<State> potentialPointsOfFailure = new HashSet<>();
-        for(State st : badStates){
-            for(Object e : st.incomingTransitions.keySet()){
+        for (State st : badStates) {
+            for (Object e : st.incomingTransitions.keySet()) {
                 potentialPointsOfFailure.addAll(allProgramStatesAfterEvent((DateEvent) e));
             }
         }
@@ -60,33 +63,16 @@ public class BackwardsAnalysis {
         return potentialPointsOfFailure;
     }
 
-    //a configuration of the backwards analysis is made up of a mapping between
-    //datestates and sets of cfg states
-    class Configuration{
-        //Property: <dst, cst> \in todo => <dst, cst> \not\in already done
-
-        //<dst, cst> \in todo  => continue backwards analysing
-        Map<State, Set<State>> todo;
-
-        //<dst, cst> \in alreadyDone => backwards analysing has already been done
-        Map<State, Set<State>> alreadyDone;
-
-        public Configuration(Map<State, Set<State>> todo, Map<State, Set<State>> alreadyDone){
-            this.todo = todo;
-            this.alreadyDone = alreadyDone;
-        }
-    }
-
-    public Configuration addStateToDoIfNotInAlreadyDone(Configuration configuration, State dateState, State cfgState){
-        if(configuration.alreadyDone.get(dateState) != null){
-            if(configuration.alreadyDone.get(dateState).contains(cfgState)){
+    public Configuration addStateToDoIfNotInAlreadyDone(Configuration configuration, State dateState, State cfgState) {
+        if (configuration.alreadyDone.get(dateState) != null) {
+            if (configuration.alreadyDone.get(dateState).contains(cfgState)) {
                 return configuration;
             }
         }
 
-        if(configuration.todo.keySet().contains(dateState)){
+        if (configuration.todo.keySet().contains(dateState)) {
             configuration.todo.get(dateState).add(cfgState);
-        } else{
+        } else {
             Set<State> cfgStates = new HashSet<>();
             cfgStates.add(cfgState);
 
@@ -97,19 +83,19 @@ public class BackwardsAnalysis {
     }
 
     //one step backwards controlled by
-    public Configuration oneStepBackwards(Configuration configuration){
+    public Configuration oneStepBackwards(Configuration configuration) {
         Map<State, Set<State>> todo = new HashMap<>();
         Map<State, Set<State>> alreadyDone = new HashMap<>(configuration.alreadyDone);
         alreadyDone.putAll(configuration.todo);
 
         Configuration newConfig = new Configuration(todo, alreadyDone);
 
-        for(Map.Entry<State, Set<State>> entries : configuration.todo.entrySet()){
+        for (Map.Entry<State, Set<State>> entries : configuration.todo.entrySet()) {
             State dateState = entries.getKey();
             Set<State> cfgStates = entries.getValue();
 
-            for(State cfgState : cfgStates){
-                if(cfgState.parent.initial.contains(cfgState)){
+            for (State cfgState : cfgStates) {
+                if (cfgState.parent.initial.contains(cfgState)) {
                     //TODO deal with method call event??
 
                     //get the statement associated with each cfgstate
@@ -120,38 +106,37 @@ public class BackwardsAnalysis {
                     MethodIdentifier method = (MethodIdentifier) analysis.CFGMethod.get(cfgState.parent);
                     Set callingStatements = (Set) analysis.methodCalledByStates.get(method);
 
-                    for(Object stmt : callingStatements){
+                    for (Object stmt : callingStatements) {
                         MethodIdentifier containingMethod = (MethodIdentifier) analysis.statementCalledBy.get(stmt);
                         CFG containingCFG = (CFG) analysis.methodCFG.get(containingMethod);
                         State callingState = (State) containingCFG.labelToState.get(new CFGState<>(stmt));
                         addStateToDoIfNotInAlreadyDone(newConfig, dateState, callingState);
                     }
 
-                } else if(((Set) analysis.statesCallMethods.get(cfgState)).size() > 0){
+                } else if (((Set) analysis.statesCallMethods.get(cfgState)).size() > 0) {
                     //TODO MethodCall Event
 
-                    for(MethodIdentifier calledMethod : ((Set<MethodIdentifier>) analysis.statesCallMethods.get(cfgState))){
+                    for (MethodIdentifier calledMethod : ((Set<MethodIdentifier>) analysis.statesCallMethods.get(cfgState))) {
                         CFG calledCFG = (CFG) analysis.methodCFG.get(calledMethod);
-                        for(Object init : calledCFG.initial){
+                        for (Object init : calledCFG.initial) {
                             addStateToDoIfNotInAlreadyDone(newConfig, dateState, (State) init);
                         }
                     }
-                }
-                else{
-                    for(Object entryObject : cfgState.incomingTransitions.keySet()){
-                        Map.Entry<CFGEvent, Set<State>> entry = (Map.Entry<CFGEvent, Set<State>>) entryObject ;
+                } else {
+                    for (Object entryObject : cfgState.incomingTransitions.keySet()) {
+                        Map.Entry<CFGEvent, Set<State>> entry = (Map.Entry<CFGEvent, Set<State>>) entryObject;
                         DateEvent dateEvent = entry.getKey().dateEvent;
 
                         //TODO handle epsilon events?
 
-                        for(Object prevDateEventEntryObject : dateState.incomingTransitions.keySet()){
+                        for (Object prevDateEventEntryObject : dateState.incomingTransitions.keySet()) {
                             Map.Entry<Event, Set<State>> prevDateEventEntry = (Map.Entry<Event, Set<State>>) prevDateEventEntryObject;
 
                             Event<DateLabel> prevDateEvent = (Event<DateLabel>) prevDateEventEntry.getKey();
-                            if(dateEvent.equals(((DateFSM) dateState.parent).eventUsedInGuardedCommand.get(prevDateEvent))){
-                                for(State dateSt : prevDateEventEntry.getValue()) {
-                                    for(State cfgSt : entry.getValue()) {
-                                        if(!configuration.alreadyDone.get(dateSt).contains(cfgSt)) {
+                            if (dateEvent.equals(((DateFSM) dateState.parent).eventUsedInGuardedCommand.get(prevDateEvent))) {
+                                for (State dateSt : prevDateEventEntry.getValue()) {
+                                    for (State cfgSt : entry.getValue()) {
+                                        if (!configuration.alreadyDone.get(dateSt).contains(cfgSt)) {
                                             //TODO theorem proving to be added here
                                             addStateToDoIfNotInAlreadyDone(newConfig, dateSt, cfgSt);
                                         }
@@ -167,7 +152,6 @@ public class BackwardsAnalysis {
         return newConfig;
     }
 
-
     public void backwardsAnalysis(DateFSM date, Set<CFG> program, CFGAnalysis cfgAnalysis) {
 
         this.analysis = cfgAnalysis;
@@ -177,13 +161,13 @@ public class BackwardsAnalysis {
         Map<State, Set<State>> todo = new HashMap<>();
         Map<State, Set<State>> alreadyDone = new HashMap<>();
 
-        for(Object bad : badStates){
+        for (Object bad : badStates) {
             todo.put((State) bad, potentialPointsOfFailure);
         }
 
         Configuration configuration = new Configuration(todo, alreadyDone);
 
-        while(configuration.todo.size() > 0){
+        while (configuration.todo.size() > 0) {
             configuration = oneStepBackwards(configuration);
         }
 
@@ -203,5 +187,22 @@ public class BackwardsAnalysis {
         //
         //
         //
+    }
+
+    //a configuration of the backwards analysis is made up of a mapping between
+    //datestates and sets of cfg states
+    class Configuration {
+        //Property: <dst, cst> \in todo => <dst, cst> \not\in already done
+
+        //<dst, cst> \in todo  => continue backwards analysing
+        Map<State, Set<State>> todo;
+
+        //<dst, cst> \in alreadyDone => backwards analysing has already been done
+        Map<State, Set<State>> alreadyDone;
+
+        public Configuration(Map<State, Set<State>> todo, Map<State, Set<State>> alreadyDone) {
+            this.todo = todo;
+            this.alreadyDone = alreadyDone;
+        }
     }
 }

@@ -2,11 +2,8 @@ package clarva.analysis;
 
 import clarva.analysis.cfg.CFG;
 import clarva.analysis.cfg.CFGEvent;
-import clarva.java.JavaEvent;
-import clarva.java.JavaMethodIdentifier;
 import clarva.matching.Aliasing;
 import clarva.matching.MethodIdentifier;
-import com.google.common.collect.Sets;
 import fsm.Event;
 import fsm.FSM;
 import fsm.State;
@@ -19,15 +16,12 @@ import fsm.date.events.ClockEvent;
 import fsm.date.events.DateEvent;
 import fsm.date.events.MethodCall;
 import fsm.helper.Pair;
-import jas.Method;
-import javafx.scene.Scene;
-import soot.jimple.InvokeExpr;
 
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.function.Predicate;
 
-public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends MethodIdentifier>{
+public abstract class CFGAnalysis<St, T extends CFGEvent, MethodID extends MethodIdentifier> {
 
     public Map<MethodID, CFG<St, T>> methodCFG;
     public Map<CFG<St, T>, MethodID> CFGMethod;
@@ -124,9 +118,10 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
 
         boolean reentersInvokingMethod = false;
 
-        if(method == null || methodInvokedInThis == null || method.equals(methodInvokedInThis)) return new Pair<>(relevantShadows, reentersInvokingMethod);
-        else{
-            CFG<St, T> methodsCFG =  this.methodCFG.get(method);
+        if (method == null || methodInvokedInThis == null || method.equals(methodInvokedInThis))
+            return new Pair<>(relevantShadows, reentersInvokingMethod);
+        else {
+            CFG<St, T> methodsCFG = this.methodCFG.get(method);
             if (methodsCFG == null) return new Pair<>(relevantShadows, reentersInvokingMethod);
 
             Set<MethodID> calledMethods = new HashSet<>();
@@ -134,37 +129,37 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
             Set<MethodID> currentMethods = new HashSet<>();
             currentMethods.add(method);
 
-            do{
+            do {
                 calledMethods.addAll(currentMethods);
 
                 Set<MethodID> nextMethods = new HashSet<>();
 
-                for(MethodID methodID : currentMethods) {
-                    CFG<St, T> methodIDCFG =  this.methodCFG.get(methodID);
+                for (MethodID methodID : currentMethods) {
+                    CFG<St, T> methodIDCFG = this.methodCFG.get(methodID);
 
-                    if(methodIDCFG == null){
+                    if (methodIDCFG == null) {
                         createCFG(methodID);
                         methodIDCFG = this.methodCFG.get(methodID);
                     }
                     for (FSM cfg : methodIDCFG.internalFSMs) {
-                        if(cfg != null && ((CFG) cfg).methodID != null) {
+                        if (cfg != null && ((CFG) cfg).methodID != null) {
                             nextMethods.add((MethodID) ((CFG) cfg).methodID);
                         }
                     }
                 }
 
-                if(nextMethods.contains(methodInvokedInThis)){
+                if (nextMethods.contains(methodInvokedInThis)) {
                     reentersInvokingMethod = true;
                 }
 
                 nextMethods.removeAll(calledMethods);
 
                 currentMethods = nextMethods;
-            }while(currentMethods.size() > 0);
+            } while (currentMethods.size() > 0);
             //collect transitively called method's
 
-            for(MethodID methodID : calledMethods) {
-                CFG<St, T> methodIDCFG =  this.methodCFG.get(methodID);
+            for (MethodID methodID : calledMethods) {
+                CFG<St, T> methodIDCFG = this.methodCFG.get(methodID);
                 relevantShadows.addAll(methodIDCFG.alphabet);
             }
         }
@@ -195,7 +190,7 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
 //    public abstract List<State> callingStates(MethodID method);
 
     public abstract List<Event<T>> shadowsBefore(MethodID method,
-                                             List<MethodID> methodsAlreadyTraversed);
+                                                 List<MethodID> methodsAlreadyTraversed);
 
     public abstract List<Event<T>> shadowsAfter(MethodID method);
 
@@ -241,8 +236,8 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
         for (int i = 0; i < stateList.size(); i++) {
             State<Integer, T> state = stateList.get(i);
 
-            if(method.toString().contains("mutateSome")
-                && state.label == 18){
+            if (method.toString().contains("mutateSome")
+                    && state.label == 18) {
                 System.out.print("");
             }
 
@@ -280,7 +275,7 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
 
     public CFG<St, T> approximateBeforeAndAfter(MethodID method, CFG<St, T> methodCFG) {
 
-        if(method.toString().contains("performInvalidUse")){
+        if (method.toString().contains("performInvalidUse")) {
             System.out.print("");
         }
 
@@ -319,9 +314,9 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
         return wholeProgramCFG;
     }
 
-        public CFG<St, T> methodCFGToWholeProgramCFG(MethodID method) {
+    public CFG<St, T> methodCFGToWholeProgramCFG(MethodID method) {
         CFG<St, T> methodCFG = this.methodCFG.get(method);
-        if(method.toString().contains("loggedInMenu")){
+        if (method.toString().contains("loggedInMenu")) {
             System.out.print("");
         }
         //if we create new fsm we run out of memory
@@ -389,7 +384,7 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
         return residual;
     }
 
-    public SubsetDate residualFromCompositionWithSemiSynch(DateFSM property, FSM<Pair<Integer, Set<String>>, T> composition){
+    public SubsetDate residualFromCompositionWithSemiSynch(DateFSM property, FSM<Pair<Integer, Set<String>>, T> composition) {
         SubsetDate residual;
 
         Set<Transition<String, DateLabel>> transitionsToKeep = new HashSet<Transition<String, DateLabel>>();
@@ -445,7 +440,7 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
     }
 
 
-    public Pair<SubsetDate, Set<Event<T>>> residualFromCompositionWithSynch(DateFSM property, FSM<Pair<Integer, String>, T> composition){
+    public Pair<SubsetDate, Set<Event<T>>> residualFromCompositionWithSynch(DateFSM property, FSM<Pair<Integer, String>, T> composition) {
         SubsetDate residual;
 
         Set<Transition<String, DateLabel>> transitionsToKeep = new HashSet<Transition<String, DateLabel>>();
@@ -458,25 +453,25 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
         }
 
         for (State<Pair<Integer, String>, T> state : composition.states) {
-                    if (stateToNewHoareTripleMethods.get(state.label.second) != null) {
-                        for (Event<T> event : state.outgoingTransitions.keySet()) {
-                            if (!event.label.epsilon) {
-                                String methodName = event.label.dateEvent.name;
-                                String methodClass = ((MethodCall) event.label.dateEvent).objectType;
+            if (stateToNewHoareTripleMethods.get(state.label.second) != null) {
+                for (Event<T> event : state.outgoingTransitions.keySet()) {
+                    if (!event.label.epsilon) {
+                        String methodName = event.label.dateEvent.name;
+                        String methodClass = ((MethodCall) event.label.dateEvent).objectType;
 
-                                String method = methodClass + "." + methodName;
-                                stateToNewHoareTripleMethods.get(state.label.second).add(method);
-                            }
-                        }
+                        String method = methodClass + "." + methodName;
+                        stateToNewHoareTripleMethods.get(state.label.second).add(method);
                     }
+                }
+            }
         }
 
 
         Set<Transition<Pair<Integer, String>, T>> compositionTransitionsToKeep = new HashSet<>();
 
         for (Transition<Pair<Integer, String>, T> transition : composition.transitions) {
-            if(!transition.event.label.epsilon){
-                if(reachesBadState(transition.source, property)){
+            if (!transition.event.label.epsilon) {
+                if (reachesBadState(transition.source, property)) {
                     compositionTransitionsToKeep.add(transition);
                     //transition.event = epsilonAction;
                 }
@@ -502,16 +497,16 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
             //Set<String> destinationPropertyStates = transition.source.label.second;
             DateEvent event = transition.event.label.dateEvent;
 
-                State<String, DateLabel> source = property.labelToState.get(label);
-                for (Event<DateLabel> eventConditionAction : source.outgoingTransitions.keySet()) {
-                    if (eventConditionAction.label.event.equals(event)) {
-                        usefulEvents.add(transition.event);
-                        for (String destinationLabel : source.outgoingTransitions.get(eventConditionAction)) {
-                            State<String, DateLabel> destination = property.labelToState.get(destinationLabel);
-                            transitionsToKeep.add(new Transition<String, DateLabel>(source, destination, eventConditionAction));
-                        }
+            State<String, DateLabel> source = property.labelToState.get(label);
+            for (Event<DateLabel> eventConditionAction : source.outgoingTransitions.keySet()) {
+                if (eventConditionAction.label.event.equals(event)) {
+                    usefulEvents.add(transition.event);
+                    for (String destinationLabel : source.outgoingTransitions.get(eventConditionAction)) {
+                        State<String, DateLabel> destination = property.labelToState.get(destinationLabel);
+                        transitionsToKeep.add(new Transition<String, DateLabel>(source, destination, eventConditionAction));
                     }
                 }
+            }
         }
 
         residual = new SubsetDate(property, transitionsToKeep, stateToNewHoareTripleMethods);
@@ -519,12 +514,12 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
         return new Pair(residual, usefulEvents);
     }
 
-    public boolean reachesBadState(State<Pair<Integer, String>, T> state, DateFSM property){
+    public boolean reachesBadState(State<Pair<Integer, String>, T> state, DateFSM property) {
 
         Set<String> reachedDateStates = reachedStates(state);
 
-        for(State<String, DateLabel> bad : property.badStates){
-            if(reachedDateStates.contains(bad.label)){
+        for (State<String, DateLabel> bad : property.badStates) {
+            if (reachedDateStates.contains(bad.label)) {
                 return true;
             }
         }
@@ -548,18 +543,18 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
 //        return false;
 //    }
 
-    public Set<String> reachedStates(State<Pair<Integer, String>, T> state){
+    public Set<String> reachedStates(State<Pair<Integer, String>, T> state) {
         Set<State<Pair<Integer, String>, T>> statesReached = new HashSet<>();
 
         Set<State<Pair<Integer, String>, T>> currentStates = new HashSet<>();
         currentStates.add(state);
 
-        do{
+        do {
             Set<State<Pair<Integer, String>, T>> nextStates = new HashSet<>();
 
-            for(State<Pair<Integer, String>, T> st : currentStates){
-                for(Set<Pair<Integer, String>> labels : st.outgoingTransitions.values()) {
-                    for(Pair<Integer, String> label : labels) {
+            for (State<Pair<Integer, String>, T> st : currentStates) {
+                for (Set<Pair<Integer, String>> labels : st.outgoingTransitions.values()) {
+                    for (Pair<Integer, String> label : labels) {
                         nextStates.add(state.parent.labelToState.get(label));
                     }
                 }
@@ -569,11 +564,11 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
             statesReached.addAll(nextStates);
             currentStates = nextStates;
 
-        }while (currentStates.size() > 0);
+        } while (currentStates.size() > 0);
 
         Set<String> dateStates = new HashSet<>();
 
-        for(State<Pair<Integer, String>, T> st : statesReached){
+        for (State<Pair<Integer, String>, T> st : statesReached) {
             dateStates.add(st.label.second);
         }
 
@@ -603,7 +598,7 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
             //Set<String> destinationPropertyStates = transition.source.label.second;
             DateEvent event = transition.event.label.dateEvent;
 
-            if(event != null) {
+            if (event != null) {
                 for (String label : sourcePropertyStates) {
                     //this is the difference from the other method
                     //check that transition does not match transitions outside the method (i.e. loops on initial, final and call states
@@ -614,11 +609,11 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
                             if (eventConditionAction.label.event.equals(event)) {
                                 for (String destinationLabel : source.outgoingTransitions.get(eventConditionAction)) {
                                     State<String, DateLabel> destination = property.labelToState.get(destinationLabel);
-                                    if(!destination.equals(source)
+                                    if (!destination.equals(source)
                                             || eventConditionAction.label.action.replaceAll(";", "").trim().equals("")
                                             || !eventConditionAction.label.event.getClass().equals(MethodCall.class)) {
                                         transitionsToKeep.add(new Transition<String, DateLabel>(source, destination, eventConditionAction));
-                                    } else{
+                                    } else {
                                         //For debugging
                                         System.out.print("");
                                     }
@@ -636,18 +631,17 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
         residual = new SubsetDate(subsetDate, transitionsToKeep, stateToNewHoareTripleMethods, false);
 
         //For debugging
-        if(residual.startingState.label.equals("")){
+        if (residual.startingState.label.equals("")) {
             System.out.print("");
         }
         return new Pair(residual, composition.alphabet);
     }
 
 
-
     public ResidualArtifact sufficientDATETransitionsWithSynch(T s, CFG<St, T> wholeProgramCFG, DateFSM property, Aliasing aliasing, Set<Event<T>> instrumentedEvents) {
         SubsetDate residual;
 
-        if(wholeProgramCFG.name.contains("loggedIn")){
+        if (wholeProgramCFG.name.contains("loggedIn")) {
             System.out.print("");
         }
 
@@ -679,9 +673,9 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
             DateEvent event = transition.event.label.dateEvent;
 
             Set<Transition<String, DateLabel>> eventsAssociatedWithTransitions;
-            if(eventsUsingTransitions.containsKey(transition.event)){
+            if (eventsUsingTransitions.containsKey(transition.event)) {
                 eventsAssociatedWithTransitions = eventsUsingTransitions.get(transition.event);
-            } else{
+            } else {
                 eventsAssociatedWithTransitions = new HashSet<>();
                 eventsUsingTransitions.put(transition.event, eventsAssociatedWithTransitions);
             }
@@ -795,13 +789,13 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
 
 
     public FSM<Pair<Integer, String>, T> synchronousComposition(CFG cfg,
-                                                                     DateFSM date,
-                                                                     T shadow,
-                                                                     Aliasing aliasing,
-                                                                     Set<Event<T>> instrumentedEvents) {
+                                                                DateFSM date,
+                                                                T shadow,
+                                                                Aliasing aliasing,
+                                                                Set<Event<T>> instrumentedEvents) {
         FSM<Pair<Integer, String>, T> composition = new FSM<>();
 
-        if(cfg.name.contains("sendAndProcessSome")){
+        if (cfg.name.contains("sendAndProcessSome")) {
             System.out.print("");
         }
 
@@ -826,12 +820,12 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
                 State<String, DateLabel> currentDateState = date.getOrAddState(current.label.second);
                 State<Integer, T> currentProgState = cfg.getOrAddState(current.label.first);
 
-                if(current.label.first == 18){
+                if (current.label.first == 18) {
                     System.out.print("");
                 }
 
                 for (Event<T> progEvent : currentProgState.outgoingTransitions.keySet()) {
-                    if(progEvent.toString().contains("black")){
+                    if (progEvent.toString().contains("black")) {
                         System.out.print("");
                     }
 
@@ -917,7 +911,7 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
         return composition;
     }
 
-        //assuming flat fsm
+    //assuming flat fsm
     public FSM<Pair<Integer, Set<String>>, T> semiSynchronousComposition(CFG cfg,
                                                                          DateFSM date,
                                                                          T shadow,
@@ -967,13 +961,12 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
     }
 
 
-
     public Set<State<Pair<Integer, Set<String>>, T>> pushStatesOneStep(FSM<Pair<Integer, Set<String>>, T> composition,
-                                                                            T shadow,
-                                                                            DateFSM date,
-                                                                            CFG cfg,
-                                                                            Set<State<Pair<Integer, Set<String>>, T>> statesToTransitionOn,
-                                                                            Aliasing aliasing) {
+                                                                       T shadow,
+                                                                       DateFSM date,
+                                                                       CFG cfg,
+                                                                       Set<State<Pair<Integer, Set<String>>, T>> statesToTransitionOn,
+                                                                       Aliasing aliasing) {
 
         Set<State<Pair<Integer, Set<String>>, T>> statesTransitionedTo = new HashSet<>();
 
@@ -985,7 +978,7 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
             Set<String> propertyStates = state.label.second;
 
             //for debugging
-            if(state.label.first.equals("58")){
+            if (state.label.first.equals("58")) {
                 System.out.print("");
             }
 
@@ -1033,7 +1026,7 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
                         Integer destinationStateLabel = iterator.next();
 
                         //for debugging
-                        if(destinationStateLabel == 58){
+                        if (destinationStateLabel == 58) {
                             System.out.print("");
                         }
 
@@ -1061,9 +1054,9 @@ public abstract class CFGAnalysis <St, T extends CFGEvent, MethodID extends Meth
     }
 
     public Set<State<Pair<Integer, Set<String>>, T>> pushStates(FSM<Pair<Integer, Set<String>>, T> composition,
-                                                                       DateFSM date,
-                                                                       CFG cfg,
-                                                                       Set<State<Pair<Integer, Set<String>>, T>> statesToTransitionOn) {
+                                                                DateFSM date,
+                                                                CFG cfg,
+                                                                Set<State<Pair<Integer, Set<String>>, T>> statesToTransitionOn) {
 
         Set<State<Pair<Integer, Set<String>>, T>> statesTransitionedTo = new HashSet<>();
 

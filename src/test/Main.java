@@ -30,34 +30,38 @@ package test;
 
 import soot.*;
 import soot.baf.Baf;
-import soot.jimple.*;
+import soot.jimple.Jimple;
+import soot.jimple.JimpleBody;
+import soot.jimple.StringConstant;
 import soot.options.Options;
 import soot.tagkit.GenericAttribute;
 import soot.tagkit.Tag;
 import soot.tagkit.TagAggregator;
-import soot.util.*;
-import java.io.*;
-import java.util.*;
+import soot.util.Chain;
+import soot.util.JasminOutputStream;
 
-/** Example of using Soot to create a classfile from scratch.
+import java.io.*;
+import java.util.Arrays;
+import java.util.LinkedList;
+
+/**
+ * Example of using Soot to create a classfile from scratch.
  * The 'createclass' example creates a HelloWorld class file using Soot.
  * It proceeds as follows:
- *
+ * <p>
  * - Create a SootClass <code>HelloWorld</code> extending java.lang.Object.
- *
+ * <p>
  * - Create a 'main' method and add it to the class.
- *
+ * <p>
  * - Create an empty JimpleBody and add it to the 'main' method.
- *
+ * <p>
  * - Add locals and statements to JimpleBody.
- *
+ * <p>
  * - Write the result out to a class file.
  */
 
-public class Main
-{
-    public static void main(String[] args) throws FileNotFoundException, IOException
-    {
+public class Main {
+    public static void main(String[] args) throws FileNotFoundException, IOException {
         PackManager.v().getPack("tag").add(new Transform("tag.mta",
                 new MyTagAggregator()));
 
@@ -78,11 +82,10 @@ public class Main
 
         // Create the method, public static void main(String[])
         method = new SootMethod("main",
-                Arrays.asList(new Type[] {ArrayType.v(RefType.v("java.lang.String"), 1)}),
+                Arrays.asList(new Type[]{ArrayType.v(RefType.v("java.lang.String"), 1)}),
                 VoidType.v(), Modifier.PUBLIC | Modifier.STATIC);
 
         sClass.addMethod(method);
-
 
 
         // create and add the class attribute, with data ``foo''
@@ -98,7 +101,6 @@ public class Main
         method.addTag(mAttr);
 
 
-
         // Create the method body
         {
             // create empty body
@@ -107,7 +109,6 @@ public class Main
             method.setActiveBody(body);
             Chain units = body.getUnits();
             Local arg, tmpRef;
-
 
 
             // Add some locals, java.lang.String l0
@@ -134,9 +135,6 @@ public class Main
                 tmpUnit.addTag(new MyTag(2));
                 units.add(tmpUnit);
             }
-
-
-
 
 
             // insert "return"
@@ -197,7 +195,7 @@ class MyTag implements Tag {
         try {
             dos.writeInt(value);
             dos.flush();
-        } catch(IOException e) {
+        } catch (IOException e) {
             System.err.println(e);
             throw new RuntimeException(e);
         }

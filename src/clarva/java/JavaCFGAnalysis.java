@@ -5,7 +5,6 @@ import clarva.analysis.cfg.CFG;
 import clarva.analysis.cfg.CFGEvent;
 import clarva.analysis.cfg.CFGState;
 import clarva.matching.MethodIdentifier;
-import fj.P;
 import fsm.Event;
 import fsm.FSM;
 import fsm.State;
@@ -56,7 +55,7 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
 
         mainMethods.add(JavaMethodIdentifier.get(Scene.v().getMainMethod()));
 
-        for(Map.Entry<InvokeExpr, MethodOrMethodContext> entry : ma.invokedMethod.entrySet()){
+        for (Map.Entry<InvokeExpr, MethodOrMethodContext> entry : ma.invokedMethod.entrySet()) {
             Set<JavaMethodIdentifier> methods = new HashSet<>();
             methods.add(JavaMethodIdentifier.get(entry.getValue()));
             this.statesCallMethods.put(ma.invokeExprToUnit.get(entry.getKey()), methods);
@@ -64,10 +63,9 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
             Set<Unit> stmts = new HashSet<>();
             stmts.add(ma.invokeExprToUnit.get(entry.getKey()));
 
-            if(this.methodCalledByStates.get(JavaMethodIdentifier.get(entry.getValue())) != null){
+            if (this.methodCalledByStates.get(JavaMethodIdentifier.get(entry.getValue())) != null) {
                 this.methodCalledByStates.get(JavaMethodIdentifier.get(entry.getValue())).addAll(stmts);
-            }
-            else{
+            } else {
                 this.methodCalledByStates.put(JavaMethodIdentifier.get(entry.getValue()), stmts);
             }
 
@@ -98,7 +96,7 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
             fsm.methodID = JavaMethodIdentifier.get(method);
             fsm.name = method.method().getName();
             methodCFG.put(JavaMethodIdentifier.get(method), fsm);
-            if(fsm == null){
+            if (fsm == null) {
                 System.out.print("");
             }
             CFGMethod.put(fsm, JavaMethodIdentifier.get(method));
@@ -224,10 +222,10 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
 
     @Override
     public void createCFG(MethodIdentifier methodID) {
-        if(methodID == null){
+        if (methodID == null) {
             System.out.print("");
         }
-        if(JavaMethodIdentifier.class.isAssignableFrom(methodID.getClass())) {
+        if (JavaMethodIdentifier.class.isAssignableFrom(methodID.getClass())) {
 
             JavaMethodIdentifier method = (JavaMethodIdentifier) methodID;
 
@@ -250,7 +248,7 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
                 //Get (empty) fsm of the method
                 CFG<Unit, JavaEvent> cfg = methodCFG.get(method);
 
-                if(cfg == null){
+                if (cfg == null) {
                     methodCFG.put(method, new CFG());
                     cfg = methodCFG.get(method);
                 }
@@ -395,11 +393,11 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
             //check that fsm is actually the method's fsm, not replaced by another method's fsm
             if (this.CFGMethod.get(fsm).equals(method)) {
                 for (Transition<Integer, JavaEvent> transition : fsm.transitions) {
-                    ((JavaEvent)transition.event.label).inferBinding(((JavaMethodIdentifier) method).methodOrMethodContext.method(),
+                    ((JavaEvent) transition.event.label).inferBinding(((JavaMethodIdentifier) method).methodOrMethodContext.method(),
                             methodMustAlias.get(method),
                             methodMustNotAlias.get(method));
                 }
-            } else{
+            } else {
                 System.out.print("");
             }
         }
@@ -434,16 +432,17 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
 
     @Override
     public void createChannelAndClockEvents(DateFSM date) {
-        for(Transition<String, DateLabel> transition : date.transitions){
+        for (Transition<String, DateLabel> transition : date.transitions) {
             DateEvent dateEvent = transition.event.label.event;
-            if(DateEvent.class.equals(ClockEvent.class)){
+            if (DateEvent.class.equals(ClockEvent.class)) {
                 clockCFGEvents.put((ClockEvent) dateEvent, new JavaEvent((ClockEvent) dateEvent));
-            } else if(DateEvent.class.equals(ChannelEvent.class)){
+            } else if (DateEvent.class.equals(ChannelEvent.class)) {
                 channelCFGEvents.put((ChannelEvent) dateEvent, new JavaEvent((ChannelEvent) dateEvent));
             }
         }
     }
-//
+
+    //
 //    public Set<Event<JavaEvent>> relevantShadows(JavaMethodIdentifier method, JavaMethodIdentifier methodInvokedInThis) {
 //        Set<Event<JavaEvent>> relevantShadows = new HashSet<>();
 //
@@ -475,36 +474,36 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
         methodsAlreadyTraversed.add(method);
 
         List<Event<JavaEvent>> before = new ArrayList<>();
-        if(method == null || method.methodOrMethodContext == null){
+        if (method == null || method.methodOrMethodContext == null) {
             System.out.print("");
         }
 
-            if (!method.methodOrMethodContext.method().isEntryMethod()
-                    && ma.reachableMethods.contains(method.methodOrMethodContext)) {
+        if (!method.methodOrMethodContext.method().isEntryMethod()
+                && ma.reachableMethods.contains(method.methodOrMethodContext)) {
 
-                Set<JavaMethodIdentifier> methodsCallingMethod = new HashSet<>();
+            Set<JavaMethodIdentifier> methodsCallingMethod = new HashSet<>();
 
-                if(ma.methodInvokedWhere.containsKey(method.methodOrMethodContext)) {
-                    for (InvokeExpr call : ma.methodInvokedWhere.get(method.methodOrMethodContext)) {
-                        if(!shadowsBeforeCall.containsKey(call)){
-                            System.out.print("");
-                        }
-                        before.addAll(shadowsBeforeCall.get(call));
-                        methodsCallingMethod.add(JavaMethodIdentifier.get(ma.invokeExprInMethod.get(call)));
+            if (ma.methodInvokedWhere.containsKey(method.methodOrMethodContext)) {
+                for (InvokeExpr call : ma.methodInvokedWhere.get(method.methodOrMethodContext)) {
+                    if (!shadowsBeforeCall.containsKey(call)) {
+                        System.out.print("");
                     }
-                } else{
-                    //this can happen for main methods of a thread for example.
-                    //Assumption: properties cannot span different threads
-                    System.out.print("");
+                    before.addAll(shadowsBeforeCall.get(call));
+                    methodsCallingMethod.add(JavaMethodIdentifier.get(ma.invokeExprInMethod.get(call)));
                 }
-
-                methodsCallingMethod.remove(method);
-
-                methodsCallingMethod.forEach(m -> {
-                    if (!methodsAlreadyTraversed.contains(m))
-                        before.addAll(shadowsBefore(m, methodsAlreadyTraversed));
-                });
+            } else {
+                //this can happen for main methods of a thread for example.
+                //Assumption: properties cannot span different threads
+                System.out.print("");
             }
+
+            methodsCallingMethod.remove(method);
+
+            methodsCallingMethod.forEach(m -> {
+                if (!methodsAlreadyTraversed.contains(m))
+                    before.addAll(shadowsBefore(m, methodsAlreadyTraversed));
+            });
+        }
 
         return before;
     }
@@ -588,7 +587,7 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
                         }
                         //add all incoming states with that dateEvent to the states to propagate backwards next
                         Set<Integer> incomingStateLabels = state.incomingTransitions.get(event);
-                        for(Integer label : incomingStateLabels){
+                        for (Integer label : incomingStateLabels) {
                             newCurrentStates.add(state.parent.labelToState.get(label));
                         }
                     }
@@ -596,7 +595,7 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
                     //if the current state represents an invocation to another method
                     //i.e. if it has an internal fsm
                     //then add all relevant shadows of the method to the before set
-                    for(State<Integer, JavaEvent> nextState : newCurrentStates) {
+                    for (State<Integer, JavaEvent> nextState : newCurrentStates) {
                         if (nextState.getInternalFSM() != null) {
                             JavaMethodIdentifier methodCalledHere = this.CFGMethod.get(nextState.getInternalFSM());
                             if (methodCalledHere == null) nextState.setInternalFSM(null);
@@ -629,7 +628,7 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
                             after.add(event);
                         }
                         Set<Integer> outgoingStateLabels = state.outgoingTransitions.get(event);
-                        for(Integer label : outgoingStateLabels){
+                        for (Integer label : outgoingStateLabels) {
                             newCurrentStates.add(state.parent.labelToState.get(label));
                         }
                     }
@@ -668,8 +667,8 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
     }
 
     public void shadowsOutsideCallArbitraryDepth() {
-        for(InvokeExpr invokeExpr : shadowsBeforeCall.keySet()) {
-            if(invokeExpr.toString().contains("specialinvoke this.<de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.Benchmark: de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.InnerNode removeSomeNode(de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.InnerNode)>($stack5)")){
+        for (InvokeExpr invokeExpr : shadowsBeforeCall.keySet()) {
+            if (invokeExpr.toString().contains("specialinvoke this.<de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.Benchmark: de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.InnerNode removeSomeNode(de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.InnerNode)>($stack5)")) {
                 System.out.print("");
             }
             Unit invokeExprUnit = ma.invokeExprToUnit.get(invokeExpr);
@@ -680,8 +679,8 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
             shadowsBeforeCall.get(invokeExpr).addAll(shadowsBefore(callingMethod, new ArrayList<>()));
         }
 
-        for(InvokeExpr invokeExpr : shadowsAfterCall.keySet()) {
-            if(invokeExpr.toString().contains("specialinvoke this.<de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.Benchmark: de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.InnerNode removeSomeNode(de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.InnerNode)>($stack5)")){
+        for (InvokeExpr invokeExpr : shadowsAfterCall.keySet()) {
+            if (invokeExpr.toString().contains("specialinvoke this.<de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.Benchmark: de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.InnerNode removeSomeNode(de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.InnerNode)>($stack5)")) {
                 System.out.print("");
             }
 
@@ -703,11 +702,11 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
                 relevantCalls.addAll(ma.methodInvokedWhere.get(method.methodOrMethodContext));
             }
         }
-     //   ma.methodInvokedWhere.get(method.methodOrMethodContext)
+        //   ma.methodInvokedWhere.get(method.methodOrMethodContext)
         //for each invocation, traverse the method it appears in both backwards and forwards till the start and end of
         //the method are reached, and collect the events encountered
         for (InvokeExpr call : relevantCalls) {
-            if(call.toString().contains("specialinvoke this.<de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.Benchmark: de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.InnerNode removeSomeNode(de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.InnerNode)>($stack5)")){
+            if (call.toString().contains("specialinvoke this.<de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.Benchmark: de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.InnerNode removeSomeNode(de.uni_luebeck.isp.rvwithunionfind.benchmarks.benchmark3.InnerNode)>($stack5)")) {
                 System.out.print("");
             }
             shadowsOutsideCallInsideCallingMethod(call);
@@ -727,7 +726,7 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
 
         if (invocations != null) {
             for (InvokeExpr invokeExpr : invocations) {
-                if(!this.shadowsBeforeCall.containsKey(invokeExpr)){
+                if (!this.shadowsBeforeCall.containsKey(invokeExpr)) {
                     System.out.print("");
                 }
                 before.addAll(this.shadowsBeforeCall.get(invokeExpr));
@@ -807,7 +806,7 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
 //        return wholeProgramCFG;
 //    }
 
-    public void identifyPotentialPointsOfFailure(FSM<Pair<Integer, Set<String>>, CFGEvent> composition, DateFSM date){
+    public void identifyPotentialPointsOfFailure(FSM<Pair<Integer, Set<String>>, CFGEvent> composition, DateFSM date) {
         for (State<Pair<Integer, Set<String>>, CFGEvent> state : composition.states) {
 
             for (String label : state.label.second) {
@@ -816,10 +815,10 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
                 if (date.badStates.contains(propertyState)) {
                     for (Event<CFGEvent> event : state.incomingTransitions.keySet()) {
                         if (event.label != null) {
-                            Stmt stmt = ((Stmt)((JavaEvent) event.label).unit);
+                            Stmt stmt = ((Stmt) ((JavaEvent) event.label).unit);
                             int lineNumber = stmt.getJavaSourceStartLineNumber();
-                            String className = ((JavaMethodIdentifier)this.statementCalledBy.get(stmt)).methodOrMethodContext.method().getDeclaringClass().getName();
-                            String methodName = ((JavaMethodIdentifier)this.statementCalledBy.get(stmt)).methodOrMethodContext.method().getName();
+                            String className = ((JavaMethodIdentifier) this.statementCalledBy.get(stmt)).methodOrMethodContext.method().getDeclaringClass().getName();
+                            String methodName = ((JavaMethodIdentifier) this.statementCalledBy.get(stmt)).methodOrMethodContext.method().getName();
 //                            this.ppfs.add(new Pair<String, String>(lineNumber + ": " + className + "." + methodName, event.label.toString()));
                             this.ppfs.add(lineNumber + ": " + className + "." + methodName + ": " + event.label.toString());
                         }

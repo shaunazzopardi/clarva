@@ -1,6 +1,6 @@
 package fsm;
 
-public class Trace<T>{
+public class Trace<T> {
 
 //	public FSM parent;
 //	
@@ -38,5 +38,5 @@ public class Trace<T>{
 //			return (Action)(state.outgoingTransitions.entrySet().toArray()[0]);
 //		}
 //	}
-	
+
 }

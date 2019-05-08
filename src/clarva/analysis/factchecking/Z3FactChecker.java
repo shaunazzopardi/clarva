@@ -1,6 +1,5 @@
 package clarva.analysis.factchecking;
 
-import clarva.analysis.factchecking.FactChecker;
 import clarva.analysis.facts.Fact;
 
 import java.util.Set;

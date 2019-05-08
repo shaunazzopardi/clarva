@@ -1,10 +1,7 @@
 package clarva.analysis.cfg;
 
-import clarva.analysis.facts.Fact;
 import clarva.analysis.facts.Facts;
 import fsm.date.events.DateEvent;
-
-import java.util.Set;
 
 public abstract class CFGEvent {
     public DateEvent dateEvent;
@@ -14,10 +11,10 @@ public abstract class CFGEvent {
     public Facts condition;
     public boolean epsilon = false;
 
-    public CFGEvent(){
+    public CFGEvent() {
     }
 
-    public CFGEvent(DateEvent dateEvent){
+    public CFGEvent(DateEvent dateEvent) {
         this.dateEvent = dateEvent;
     }
 }

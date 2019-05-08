@@ -15,128 +15,126 @@ import java.util.*;
 
 public class ProgramModifier {
 
-	//TODO implement this.
-	// Maybe create monitored versions of functions in larva monitored system
-	//	and have any instrumented calls use those functions
-	public static boolean dynamicallyInstrumentedMethod(SootMethod method) throws IOException {
+    static SootClass monitoredEventClass = null;
 
-		SootClass declaringClass = method.getDeclaringClass();
+    //TODO implement this.
+    // Maybe create monitored versions of functions in larva monitored system
+    //	and have any instrumented calls use those functions
+    public static boolean dynamicallyInstrumentedMethod(SootMethod method) throws IOException {
 
-		SootMethod monitoredMethod = new SootMethod(method.getName() + "Monitored", method.getParameterTypes(), method.getReturnType());
+        SootClass declaringClass = method.getDeclaringClass();
 
-		JimpleBody body = Jimple.v().newBody(monitoredMethod);
-		monitoredMethod.setActiveBody(body);
+        SootMethod monitoredMethod = new SootMethod(method.getName() + "Monitored", method.getParameterTypes(), method.getReturnType());
 
-		declaringClass.addMethod(monitoredMethod);
-		monitoredMethod.setDeclaringClass(declaringClass);
+        JimpleBody body = Jimple.v().newBody(monitoredMethod);
+        monitoredMethod.setActiveBody(body);
 
-		Local arg = Jimple.v().newLocal("l0", method.getReturnType());
-		body.getLocals().add(arg);
+        declaringClass.addMethod(monitoredMethod);
+        monitoredMethod.setDeclaringClass(declaringClass);
 
-		if(!declaringClass.isStatic()
-				&& !method.isStatic()){
+        Local arg = Jimple.v().newLocal("l0", method.getReturnType());
+        body.getLocals().add(arg);
 
-			ThisRef thisRef = new ThisRef(method.getDeclaringClass().getType());
+        if (!declaringClass.isStatic()
+                && !method.isStatic()) {
 
-			Local thisLocal = Jimple.v().newLocal("ths", thisRef.getType());
-			body.getLocals().add(thisLocal);
+            ThisRef thisRef = new ThisRef(method.getDeclaringClass().getType());
 
-			body.getUnits().add(Jimple.v().newIdentityStmt(thisLocal,
-			            Jimple.v().newThisRef((RefType)thisRef.getType())));
+            Local thisLocal = Jimple.v().newLocal("ths", thisRef.getType());
+            body.getLocals().add(thisLocal);
 
-		    body.getUnits().add(Jimple.v().newInvokeStmt
-		    	        (Jimple.v().newVirtualInvokeExpr
-		    	           (thisLocal, method.makeRef(), body.getParameterLocals())));
+            body.getUnits().add(Jimple.v().newIdentityStmt(thisLocal,
+                    Jimple.v().newThisRef((RefType) thisRef.getType())));
 
-
-
-		//method.setName(method.getName() + "Unmonitored");
-		}
-		else{
-		    body.getUnits().add(Jimple.v().newInvokeStmt
-		    	        (Jimple.v().newStaticInvokeExpr
-		    	           (method.makeRef(), body.getParameterLocals())));
-		}
-
-		if(method.getReturnType().toString() != "void"){
-			body.getUnits().add(Jimple.v().newReturnStmt(arg));
-		}
+            body.getUnits().add(Jimple.v().newInvokeStmt
+                    (Jimple.v().newVirtualInvokeExpr
+                            (thisLocal, method.makeRef(), body.getParameterLocals())));
 
 
-		String fileName = SourceLocator.v()
-				.getFileNameFor(declaringClass, Options.output_format_class);
-		OutputStream streamOut = new JasminOutputStream(
-				new FileOutputStream(fileName));
-		PrintWriter writerOut = new PrintWriter(
-				new OutputStreamWriter(streamOut));
-		AbstractJasminClass jasminClass = new soot.baf.JasminClass(declaringClass);
-		jasminClass.print(writerOut);
-		writerOut.flush();
-		streamOut.close();
+            //method.setName(method.getName() + "Unmonitored");
+        } else {
+            body.getUnits().add(Jimple.v().newInvokeStmt
+                    (Jimple.v().newStaticInvokeExpr
+                            (method.makeRef(), body.getParameterLocals())));
+        }
+
+        if (method.getReturnType().toString() != "void") {
+            body.getUnits().add(Jimple.v().newReturnStmt(arg));
+        }
 
 
-		return true;
-	}
-
-	static SootClass monitoredEventClass = null;
-
-	public static void createInstrumentedActionsClass() {
-		if(monitoredEventClass == null) {
-			monitoredEventClass = new SootClass("EventMonitoredInterface", Modifier.PUBLIC);
-
-			monitoredEventClass.setSuperclass(Scene.v().getSootClass("java.lang.Object"));
-
-			Scene.v().addClass(monitoredEventClass);
-		}
-	}
+        String fileName = SourceLocator.v()
+                .getFileNameFor(declaringClass, Options.output_format_class);
+        OutputStream streamOut = new JasminOutputStream(
+                new FileOutputStream(fileName));
+        PrintWriter writerOut = new PrintWriter(
+                new OutputStreamWriter(streamOut));
+        AbstractJasminClass jasminClass = new soot.baf.JasminClass(declaringClass);
+        jasminClass.print(writerOut);
+        writerOut.flush();
+        streamOut.close();
 
 
-	//TODO, smarter instrumentation: augment calls with boolean monitored, where if true then the monitored calls are used, and if false the unmonitored calls are used
-	public static void instrument() throws Exception {
-		createInstrumentedActionsClass();
+        return true;
+    }
 
-		Set<Event<JavaEvent>> events = new HashSet<>();
+    public static void createInstrumentedActionsClass() {
+        if (monitoredEventClass == null) {
+            monitoredEventClass = new SootClass("EventMonitoredInterface", Modifier.PUBLIC);
 
-		for(Set<Event<JavaEvent>> eventss : PropertyTransformer.eventsToMonitorFor.values()){
-			events = Sets.union(events, eventss);
-		}
+            monitoredEventClass.setSuperclass(Scene.v().getSootClass("java.lang.Object"));
 
-		for (Event<JavaEvent> event : events) {
-			if (event.label.epsilon) continue;
+            Scene.v().addClass(monitoredEventClass);
+        }
+    }
 
-			SootMethod sootMethod = event.label.callingMethod;
 
-			Body sootMethodBody = sootMethod.getActiveBody();
+    //TODO, smarter instrumentation: augment calls with boolean monitored, where if true then the monitored calls are used, and if false the unmonitored calls are used
+    public static void instrument() throws Exception {
+        createInstrumentedActionsClass();
 
-			Chain units = sootMethodBody.getUnits();
+        Set<Event<JavaEvent>> events = new HashSet<>();
 
-			Iterator stmtIt = units.snapshotIterator();
+        for (Set<Event<JavaEvent>> eventss : PropertyTransformer.eventsToMonitorFor.values()) {
+            events = Sets.union(events, eventss);
+        }
 
-			while (stmtIt.hasNext()) {
-				Stmt stmt = (Stmt) stmtIt.next();
+        for (Event<JavaEvent> event : events) {
+            if (event.label.epsilon) continue;
 
-				if (event.label.unit.equals(stmt)) {
-					if (InvokeStmt.class.isAssignableFrom(stmt.getClass())) {
+            SootMethod sootMethod = event.label.callingMethod;
 
-						InvokeStmt invokeStmt = new JInvokeStmt(instrumentInvocation(stmt.getInvokeExpr(), VoidType.v()));
-						units.insertBefore(invokeStmt, stmt);
-						units.remove(stmt);
+            Body sootMethodBody = sootMethod.getActiveBody();
 
-					} else if (AssignStmt.class.isAssignableFrom(stmt.getClass())) {
-						InvokeExpr invokeExpr = instrumentInvocation(stmt.getInvokeExpr(), ((AssignStmt) stmt).getLeftOp().getType());
-						JAssignStmt jAssignStmt = new JAssignStmt(((AssignStmt) stmt).getLeftOp(), invokeExpr);
-						units.insertBefore(jAssignStmt, stmt);
-						units.remove(stmt);
+            Chain units = sootMethodBody.getUnits();
 
-					} else{
-						throw new Exception("Event triggerring statement not handled.");
-					}
+            Iterator stmtIt = units.snapshotIterator();
+
+            while (stmtIt.hasNext()) {
+                Stmt stmt = (Stmt) stmtIt.next();
+
+                if (event.label.unit.equals(stmt)) {
+                    if (InvokeStmt.class.isAssignableFrom(stmt.getClass())) {
+
+                        InvokeStmt invokeStmt = new JInvokeStmt(instrumentInvocation(stmt.getInvokeExpr(), VoidType.v()));
+                        units.insertBefore(invokeStmt, stmt);
+                        units.remove(stmt);
+
+                    } else if (AssignStmt.class.isAssignableFrom(stmt.getClass())) {
+                        InvokeExpr invokeExpr = instrumentInvocation(stmt.getInvokeExpr(), ((AssignStmt) stmt).getLeftOp().getType());
+                        JAssignStmt jAssignStmt = new JAssignStmt(((AssignStmt) stmt).getLeftOp(), invokeExpr);
+                        units.insertBefore(jAssignStmt, stmt);
+                        units.remove(stmt);
+
+                    } else {
+                        throw new Exception("Event triggerring statement not handled.");
+                    }
 
 //					units.remove(stmt);
 
-				}
-			}
-		}
+                }
+            }
+        }
 
 //		for (Event<JavaEvent> event : events) {
 //			SootClass c = event.label.callingMethod.getDeclaringClass();
@@ -146,107 +144,107 @@ public class ProgramModifier {
 //			}
 //		}
 
-		printEventClass();
-	}
+        printEventClass();
+    }
 
-	public static InvokeExpr instrumentInvocation(InvokeExpr invoke, Type returnType) {
+    public static InvokeExpr instrumentInvocation(InvokeExpr invoke, Type returnType) {
 //		if (AbstractVirtualInvokeExpr.class.isAssignableFrom(invoke.getClass())
 //				|| ) {
 
-			List<Value> args = new ArrayList<>();
-			String newMethodName;
+        List<Value> args = new ArrayList<>();
+        String newMethodName;
 
 
-			if (AbstractVirtualInvokeExpr.class.isAssignableFrom(invoke.getClass())) {
-				newMethodName = invoke.getMethod().getName() + "Monitored";
+        if (AbstractVirtualInvokeExpr.class.isAssignableFrom(invoke.getClass())) {
+            newMethodName = invoke.getMethod().getName() + "Monitored";
 //				newMethodName = "virtual" + invoke.getMethod().getName() + "Monitored";
 
-				AbstractVirtualInvokeExpr invokeExpr = (AbstractVirtualInvokeExpr) invoke;
-				args.add(invokeExpr.getBase());
+            AbstractVirtualInvokeExpr invokeExpr = (AbstractVirtualInvokeExpr) invoke;
+            args.add(invokeExpr.getBase());
 
-				args.addAll(invokeExpr.getArgs());
+            args.addAll(invokeExpr.getArgs());
 
-			} else if (AbstractInstanceInvokeExpr.class.isAssignableFrom(invoke.getClass())) {
-				newMethodName = invoke.getMethod().getName() + "Monitored";
+        } else if (AbstractInstanceInvokeExpr.class.isAssignableFrom(invoke.getClass())) {
+            newMethodName = invoke.getMethod().getName() + "Monitored";
 //				newMethodName = "instance" + invoke.getMethod().getName() + "Monitored";
 
-				AbstractInstanceInvokeExpr invokeExpr = (AbstractInstanceInvokeExpr) invoke;
-				args.add(invokeExpr.getBase());
+            AbstractInstanceInvokeExpr invokeExpr = (AbstractInstanceInvokeExpr) invoke;
+            args.add(invokeExpr.getBase());
 
-				args.addAll(invokeExpr.getArgs());
-			} else {//(AbstractStaticInvokeExpr.class.isAssignableFrom(invoke.getClass())){
-				newMethodName = invoke.getMethod().getName() + "Monitored";
-				args.addAll(invoke.getArgs());
-			}
+            args.addAll(invokeExpr.getArgs());
+        } else {//(AbstractStaticInvokeExpr.class.isAssignableFrom(invoke.getClass())){
+            newMethodName = invoke.getMethod().getName() + "Monitored";
+            args.addAll(invoke.getArgs());
+        }
 
-			int varNo = 0;
+        int varNo = 0;
 
-			List<Type> inputTypes = new ArrayList<>();
+        List<Type> inputTypes = new ArrayList<>();
 
-			for (int i = 0; i < args.size(); i++) {
-				inputTypes.add(args.get(i).getType());
-			}
+        for (int i = 0; i < args.size(); i++) {
+            inputTypes.add(args.get(i).getType());
+        }
 
-			if (!monitoredEventClass.declaresMethod(newMethodName, inputTypes)) {
-				SootMethod method = new SootMethod(newMethodName,
-						inputTypes,
-						returnType, Modifier.STATIC | Modifier.PUBLIC);
+        if (!monitoredEventClass.declaresMethod(newMethodName, inputTypes)) {
+            SootMethod method = new SootMethod(newMethodName,
+                    inputTypes,
+                    returnType, Modifier.STATIC | Modifier.PUBLIC);
 
-				JimpleBody body = Jimple.v().newBody(method);
-				method.setActiveBody(body);
+            JimpleBody body = Jimple.v().newBody(method);
+            method.setActiveBody(body);
 
-				for(int i = 0; i < args.size(); i++){
+            for (int i = 0; i < args.size(); i++) {
 //					if(Constant.class.isAssignableFrom(args.get(i).getClass())){
-						Local newLocal = Jimple.v().newLocal("r" + varNo,(args.get(i)).getType());
-						varNo++;
+                Local newLocal = Jimple.v().newLocal("r" + varNo, (args.get(i)).getType());
+                varNo++;
 
-						body.getLocals().add(newLocal);
-						body.getUnits().add(Jimple.v().newIdentityStmt(newLocal,
-								Jimple.v().newParameterRef(newLocal.getType(), i)));
+                body.getLocals().add(newLocal);
+                body.getUnits().add(Jimple.v().newIdentityStmt(newLocal,
+                        Jimple.v().newParameterRef(newLocal.getType(), i)));
 //					}
-				}
+            }
 
-				InvokeExpr newInvoke;
+            InvokeExpr newInvoke;
 
-				List<Local> locals = body.getParameterLocals();
+            List<Local> locals = body.getParameterLocals();
 
-				if(JStaticInvokeExpr.class.equals(invoke.getClass())){
-					newInvoke = new JStaticInvokeExpr(invoke.getMethodRef(), locals);
-				} else if(JSpecialInvokeExpr.class.equals(invoke.getClass())){
-					newInvoke = new JSpecialInvokeExpr((Local) locals.get(0), invoke.getMethodRef(), locals.subList(1, locals.size()));
-				} else if(JInterfaceInvokeExpr.class.equals(invoke.getClass())){
-					newInvoke = new JInterfaceInvokeExpr((Local) locals.get(0), invoke.getMethodRef(), locals.subList(1, locals.size()));
-				} else if(JVirtualInvokeExpr.class.equals(invoke.getClass())){
-					newInvoke = new JVirtualInvokeExpr((Local) locals.get(0), invoke.getMethodRef(), locals.subList(1, locals.size()));
-				} else{
-					//TODO this may cause errors
-					newInvoke = invoke;
-				}
+            if (JStaticInvokeExpr.class.equals(invoke.getClass())) {
+                newInvoke = new JStaticInvokeExpr(invoke.getMethodRef(), locals);
+            } else if (JSpecialInvokeExpr.class.equals(invoke.getClass())) {
+                newInvoke = new JSpecialInvokeExpr((Local) locals.get(0), invoke.getMethodRef(), locals.subList(1, locals.size()));
+            } else if (JInterfaceInvokeExpr.class.equals(invoke.getClass())) {
+                newInvoke = new JInterfaceInvokeExpr((Local) locals.get(0), invoke.getMethodRef(), locals.subList(1, locals.size()));
+            } else if (JVirtualInvokeExpr.class.equals(invoke.getClass())) {
+                newInvoke = new JVirtualInvokeExpr((Local) locals.get(0), invoke.getMethodRef(), locals.subList(1, locals.size()));
+            } else {
+                //TODO this may cause errors
+                newInvoke = invoke;
+            }
 //				TODO this isn t handled
 //				TODO see http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.590.624&rep=rep1&type=pdf
 //				else if(JDynamicInvokeExpr.class.equals(invoke.getClass())){
 //
 //				}
 
-				if(returnType.equals(VoidType.v())) {
-					body.getUnits().add(new JInvokeStmt(newInvoke));
-					body.getUnits().add(Jimple.v().newReturnVoidStmt());
-				} else{
-					Local newLocal = Jimple.v().newLocal("r" + varNo, returnType);
-					varNo++;
+            if (returnType.equals(VoidType.v())) {
+                body.getUnits().add(new JInvokeStmt(newInvoke));
+                body.getUnits().add(Jimple.v().newReturnVoidStmt());
+            } else {
+                Local newLocal = Jimple.v().newLocal("r" + varNo, returnType);
+                varNo++;
 
-					body.getLocals().add(newLocal);
+                body.getLocals().add(newLocal);
 
-					body.getUnits().add(new JAssignStmt(newLocal, newInvoke));
-					body.getUnits().add(Jimple.v().newReturnStmt(newLocal));
-				}
+                body.getUnits().add(new JAssignStmt(newLocal, newInvoke));
+                body.getUnits().add(Jimple.v().newReturnStmt(newLocal));
+            }
 
-				monitoredEventClass.addMethod(method);
-			}
+            monitoredEventClass.addMethod(method);
+        }
 
-			JStaticInvokeExpr jStaticInvokeExpr = new JStaticInvokeExpr(monitoredEventClass.getMethod(newMethodName, inputTypes).makeRef(), args);
+        JStaticInvokeExpr jStaticInvokeExpr = new JStaticInvokeExpr(monitoredEventClass.getMethod(newMethodName, inputTypes).makeRef(), args);
 
-			return jStaticInvokeExpr;
+        return jStaticInvokeExpr;
 
 //		} else if (AbstractInstanceInvokeExpr.class.isAssignableFrom(invoke.getClass())) {
 //			AbstractInstanceInvokeExpr invokeExpr = (AbstractInstanceInvokeExpr) invoke;
@@ -309,68 +307,68 @@ public class ProgramModifier {
 //		}
 //
 //		return invoke;
-	}
+    }
 
-	public static void printEventClass() throws IOException {
-		String fileName = SourceLocator.v().getFileNameFor(monitoredEventClass, Options.output_format_class);
+    public static void printEventClass() throws IOException {
+        String fileName = SourceLocator.v().getFileNameFor(monitoredEventClass, Options.output_format_class);
 
-		Files.createParentDirs(new File(fileName));
+        Files.createParentDirs(new File(fileName));
 
-		OutputStream streamOut = new JasminOutputStream(new FileOutputStream(fileName));
-		PrintWriter writerOut = new PrintWriter(new OutputStreamWriter(streamOut));
+        OutputStream streamOut = new JasminOutputStream(new FileOutputStream(fileName));
+        PrintWriter writerOut = new PrintWriter(new OutputStreamWriter(streamOut));
 
-		JasminClass jasminClass = new soot.jimple.JasminClass(monitoredEventClass);
-		jasminClass.print(writerOut);
-		writerOut.flush();
-		streamOut.close();
+        JasminClass jasminClass = new soot.jimple.JasminClass(monitoredEventClass);
+        jasminClass.print(writerOut);
+        writerOut.flush();
+        streamOut.close();
 
-	}
+    }
 
-	//TODO finish this method
-	//this is to be used to add a boolean variable to a method's parameters,
-	//which denotes whether events activated during its execution should be monitored for or not
-	//this is to be used to turn off instrumentation of a method depending where it is called from
-	public static void addMonitoringCondition(SootMethod method){
-		List<Type> parameterTypes = method.getParameterTypes();
-		parameterTypes.add(BooleanType.v());
+    //TODO finish this method
+    //this is to be used to add a boolean variable to a method's parameters,
+    //which denotes whether events activated during its execution should be monitored for or not
+    //this is to be used to turn off instrumentation of a method depending where it is called from
+    public static void addMonitoringCondition(SootMethod method) {
+        List<Type> parameterTypes = method.getParameterTypes();
+        parameterTypes.add(BooleanType.v());
 
-		Body body = method.getActiveBody();
+        Body body = method.getActiveBody();
 
-		String monitoredFlagVar = getNonUsedLocalName(body.getLocals());
+        String monitoredFlagVar = getNonUsedLocalName(body.getLocals());
 
-		Local monitoredFlagLocal = Jimple.v().newLocal(monitoredFlagVar, BooleanType.v());
+        Local monitoredFlagLocal = Jimple.v().newLocal(monitoredFlagVar, BooleanType.v());
 
-		body.getLocals().add(monitoredFlagLocal);
-		body.getUnits().add(Jimple.v().newIdentityStmt(monitoredFlagLocal,
-				Jimple.v().newParameterRef(BooleanType.v(), parameterTypes.size())));
+        body.getLocals().add(monitoredFlagLocal);
+        body.getUnits().add(Jimple.v().newIdentityStmt(monitoredFlagLocal,
+                Jimple.v().newParameterRef(BooleanType.v(), parameterTypes.size())));
 
-		UnitPatchingChain units = body.getUnits();
+        UnitPatchingChain units = body.getUnits();
 
-		for(Unit unit : units){
-			//check if unit matches an event
+        for (Unit unit : units) {
+            //check if unit matches an event
 
-			//check if unit calls a method
-			//if yes then transform method to have
-		}
-	}
+            //check if unit calls a method
+            //if yes then transform method to have
+        }
+    }
 
-	public static String getNonUsedLocalName(Collection<Local> locals){
-		int varNo = 1000;
-		String var = "rr";
+    public static String getNonUsedLocalName(Collection<Local> locals) {
+        int varNo = 1000;
+        String var = "rr";
 
-		boolean used = true;
+        boolean used = true;
 
-		do{
-			varNo++;
-			for(Local local : locals){
-				if(local.getName().equals(var + varNo)){
-					used = true;
-					continue;
-				}
-			}
+        do {
+            varNo++;
+            for (Local local : locals) {
+                if (local.getName().equals(var + varNo)) {
+                    used = true;
+                    continue;
+                }
+            }
 
-		}while(used);
+        } while (used);
 
-		return var + varNo;
-	}
+        return var + varNo;
+    }
 }
