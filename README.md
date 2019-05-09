@@ -7,7 +7,7 @@ cLARVA (= [clara](https://github.com/Sable/clara) + [LARVA](http://www.cs.um.edu
 
 1. Only properties about sequential parts of the program will be analysed soundly. You can still analyse programs with threads, but the results will only apply intra-thread, and no guarantees are given for any interleaving behaviour.
 2. Only LARVA scripts with one DATE will be processed.
-3. The pointer-analysis employed is SPARK, as provided by Soot, and is configured to ignore Java libraries (to reduce running time). Therefore the soundness of the analysis is limited to properties about the application where the control-flow within calls to Java libraries is irrelevant to the property and to the creation of sound abstraction of the program.
+3. Only control-flow static analysis is used, ignoring any data-oriented concerns of a DATE.
 4. Tool is still under development. It has been manually verified to give correct results under some case studies, however this does not ensure that other bugs are not present.
 
 **Input**: 
