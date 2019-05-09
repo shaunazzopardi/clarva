@@ -20,11 +20,12 @@ public class Main {
     public static String outputDir = "./output-files/dava/classes";
 
     public static void main(String[] args){
-        Thread clarva = new Thread(new clarva.Main(args));
-        clarva.start();
-        while(clarva.isAlive()){
-
-        }
+        clarva.Main.main(args);
+//        Thread clarva = new Thread(new clarva.Main(args));
+//        clarva.start();
+//        while(clarva.isAlive()){
+//
+//        }
 //        G.reset();
 //        soot.Main.main(new String[]{"-cp", "C:\\Program Files\\Java\\jre1.8.0_161\\lib\\jce.jar;" + outputDir, "-f", "dava", "-process-dir", outputDir});
 
