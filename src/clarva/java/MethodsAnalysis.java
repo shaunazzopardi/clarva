@@ -206,35 +206,38 @@ public class MethodsAnalysis {
                         }
                     }
 
-                    if (method.method().hasActiveBody()) {
+//                    if (clarva.Main.fast) {
 
-                        for (Unit unit : method.method().retrieveActiveBody().getUnits()) {
-                            SootMethod invokedMethod = null;
-
-                            if (InvokeStmt.class.isAssignableFrom(unit.getClass())) {
-                                invokedMethod = ((InvokeStmt) unit).getInvokeExpr().getMethod();
-                            } else if (AssignStmt.class.isAssignableFrom(unit.getClass())
-                                    && InvokeExpr.class.isAssignableFrom(((AssignStmt) unit).getRightOp().getClass())) {
-                                invokedMethod = ((InvokeExpr) ((AssignStmt) unit).getRightOp()).getMethod();
-                            }
-
-                            if (invokedMethod != null) {
-
-                                if (Matching.matchesMethod(invokedMethod, event)) {
-                                    methods.add(invokedMethod);
-
-                                    if (sootMethodToDateEvents.containsKey(invokedMethod)
-                                            && !sootMethodToDateEvents.get(invokedMethod).contains(event)) {
-                                        sootMethodToDateEvents.get(invokedMethod).add(event);
-                                    } else if (!sootMethodToDateEvents.containsKey(invokedMethod)) {
-                                        List<MethodCall> corr = new ArrayList<MethodCall>();
-                                        corr.add(event);
-                                        sootMethodToDateEvents.put(invokedMethod, corr);
-                                    }
-                                }
-                            }
-                        }
-                    }
+//                        if (method.method().hasActiveBody()) {
+//
+//                            for (Unit unit : method.method().retrieveActiveBody().getUnits()) {
+//                                SootMethod invokedMethod = null;
+//
+//                                if (InvokeStmt.class.isAssignableFrom(unit.getClass())) {
+//                                    invokedMethod = ((InvokeStmt) unit).getInvokeExpr().getMethod();
+//                                } else if (AssignStmt.class.isAssignableFrom(unit.getClass())
+//                                        && InvokeExpr.class.isAssignableFrom(((AssignStmt) unit).getRightOp().getClass())) {
+//                                    invokedMethod = ((InvokeExpr) ((AssignStmt) unit).getRightOp()).getMethod();
+//                                }
+//
+//                                if (invokedMethod != null) {
+//
+//                                    if (Matching.matchesMethod(invokedMethod, event)) {
+//                                        methods.add(invokedMethod);
+//
+//                                        if (sootMethodToDateEvents.containsKey(invokedMethod)
+//                                                && !sootMethodToDateEvents.get(invokedMethod).contains(event)) {
+//                                            sootMethodToDateEvents.get(invokedMethod).add(event);
+//                                        } else if (!sootMethodToDateEvents.containsKey(invokedMethod)) {
+//                                            List<MethodCall> corr = new ArrayList<MethodCall>();
+//                                            corr.add(event);
+//                                            sootMethodToDateEvents.put(invokedMethod, corr);
+//                                        }
+//                                    }
+//                                }
+//                            }
+//                        }
+//                    }
                 }
 
                 dateEventToSootMethods.put(event, methods);
