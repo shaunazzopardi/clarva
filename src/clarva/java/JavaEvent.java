@@ -157,13 +157,27 @@ public class JavaEvent extends CFGEvent {
 //						}
 
                     {
-                        Set<Type> types1 = new HashSet<>(this.objectBinding.get(var).first.getPointsToSet().possibleTypes());
+
                         Type localType1 = this.objectBinding.get(var).first.getLocal().getType();
-                        types1.add(localType1);
+                        Type localType2 = s.objectBinding.get(var).first.getLocal().getType();
+
+                        if (RefType.class.isAssignableFrom(localType1.getClass())
+                                && RefType.class.isAssignableFrom(localType2.getClass())) {
+                            SootClass type1Class = ((RefType) localType1).getSootClass();
+                            SootClass type2Class = ((RefType) localType2).getSootClass();
+
+                            if (!subStructureOf(type1Class, type2Class)
+                                    && !subStructureOf(type2Class, type1Class)) {
+                                return false;
+                            }
+                        }
+
+                        Set<Type> types1 = new HashSet<>(this.objectBinding.get(var).first.getPointsToSet().possibleTypes());
+//                        types1.add(localType1);
 
                         Set<Type> types2 = new HashSet<>(s.objectBinding.get(var).first.getPointsToSet().possibleTypes());
-                        Type localType2 = s.objectBinding.get(var).first.getLocal().getType();
-                        types2.add(localType2);
+//                        types2.add(localType2);
+
 
                         for (Type type1 : types1) {
                             for (Type type2 : types2) {
