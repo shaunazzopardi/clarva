@@ -140,6 +140,7 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
     public Set<MethodOrMethodContext> methodFSMsToGenerateFor(Set<MethodOrMethodContext> methods) {
         Set<MethodOrMethodContext> methodsToKeep = new HashSet<MethodOrMethodContext>();
 
+        Set<MethodOrMethodContext> methodsAlreadyDealtWith = new HashSet<MethodOrMethodContext>();
         Set<MethodOrMethodContext> methodsToResolve = new HashSet<MethodOrMethodContext>();
 
         methodsToResolve.addAll(methods);
@@ -151,24 +152,32 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
             notFinished = false;
             Set<MethodOrMethodContext> methodsToResolve2 = new HashSet<MethodOrMethodContext>();
 
+            methodsToResolve.removeAll(methodsAlreadyDealtWith);
+
             //if all methods to resolve already resolved
-            if (methodsToKeep.containsAll(methodsToResolve)) {
+            if (methodsToResolve.size() == 0) {
 //                return methodsToKeep;
                 notFinished = false;
                 break;
             }
 
+            methodsAlreadyDealtWith.addAll(methodsToResolve);
+
             for (MethodOrMethodContext method : methodsToResolve) {
-                if (this.reachableFromMainMethod(method)) {
+//                if (this.reachableFromMainMethod(method)) {
                     Iterator<Edge> edgesIntoMethod = cg.edgesInto(method);
                     while (edgesIntoMethod.hasNext()) {
                         methodsToResolve2.add(edgesIntoMethod.next().getSrc());
                         notFinished = true;
                     }
+//                }
+
+                if(method.method().getDeclaringClass().isApplicationClass() && !method.method().isJavaLibraryMethod()){
+                    methodsToKeep.add(method);
                 }
             }
 
-            methodsToKeep.addAll(methodsToResolve);
+//            methodsToKeep.addAll(methodsToResolve);
             methodsToResolve.clear();
             methodsToResolve = methodsToResolve2;
         }
@@ -229,7 +238,7 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
 
             JavaMethodIdentifier method = (JavaMethodIdentifier) methodID;
 
-            if (method.toString().contains("transactionGreylistedMenu")) {
+            if (method.toString().contains("loggedInMenu")) {
                 System.out.print("");
             }
 
@@ -487,9 +496,10 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
                 for (InvokeExpr call : ma.methodInvokedWhere.get(method.methodOrMethodContext)) {
                     if (!shadowsBeforeCall.containsKey(call)) {
                         System.out.print("");
+                    } else {
+                        before.addAll(shadowsBeforeCall.get(call));
                     }
-                    before.addAll(shadowsBeforeCall.get(call));
-                    methodsCallingMethod.add(JavaMethodIdentifier.get(ma.invokeExprInMethod.get(call)));
+                        methodsCallingMethod.add(JavaMethodIdentifier.get(ma.invokeExprInMethod.get(call)));
                 }
             } else {
                 //this can happen for main methods of a thread for example.
@@ -525,7 +535,9 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
             for (JavaMethodIdentifier toDo : methodsToTraverse) {
                 if (ma.methodInvokedWhere.get(toDo.methodOrMethodContext) != null) {
                     for (InvokeExpr call : ma.methodInvokedWhere.get(toDo.methodOrMethodContext)) {
-                        after.addAll(shadowsAfterCall.get(call));
+                        if(shadowsAfterCall.containsKey(call)) {
+                            after.addAll(shadowsAfterCall.get(call));
+                        }
                         newMethodsToTraverse.add(JavaMethodIdentifier.get(ma.invokeExprInMethod.get(call)));
                     }
                 }
@@ -676,7 +688,9 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
 
             JavaMethodIdentifier callingMethod = (JavaMethodIdentifier) this.statementCalledBy.get(invokeExprUnit);
 
-            shadowsBeforeCall.get(invokeExpr).addAll(shadowsBefore(callingMethod, new ArrayList<>()));
+            if (callingMethod != null) {
+                shadowsBeforeCall.get(invokeExpr).addAll(shadowsBefore(callingMethod, new ArrayList<>()));
+            }
         }
 
         for (InvokeExpr invokeExpr : shadowsAfterCall.keySet()) {
@@ -689,8 +703,11 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
 
             JavaMethodIdentifier callingMethod = (JavaMethodIdentifier) this.statementCalledBy.get(invokeExprUnit);
 
-            shadowsAfterCall.get(invokeExpr).addAll(shadowsAfter(callingMethod));
+            if (callingMethod != null) {
+                shadowsAfterCall.get(invokeExpr).addAll(shadowsAfter(callingMethod));
+            }
         }
+
 
     }
 
@@ -728,9 +745,10 @@ public class JavaCFGAnalysis extends CFGAnalysis<Unit, JavaEvent, JavaMethodIden
             for (InvokeExpr invokeExpr : invocations) {
                 if (!this.shadowsBeforeCall.containsKey(invokeExpr)) {
                     System.out.print("");
+                } else{
+                    before.addAll(this.shadowsBeforeCall.get(invokeExpr));
+                    after.addAll(this.shadowsAfterCall.get(invokeExpr));
                 }
-                before.addAll(this.shadowsBeforeCall.get(invokeExpr));
-                after.addAll(this.shadowsAfterCall.get(invokeExpr));
             }
 
             before.addAll(this.shadowsBefore(method, new ArrayList<>()));
