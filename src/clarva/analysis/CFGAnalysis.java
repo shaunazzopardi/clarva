@@ -160,7 +160,8 @@ public abstract class CFGAnalysis<St, T extends CFGEvent, MethodID extends Metho
 
             for (MethodID methodID : calledMethods) {
                 CFG<St, T> methodIDCFG = this.methodCFG.get(methodID);
-                relevantShadows.addAll(methodIDCFG.alphabet);
+                relevantShadows.addAll(getLocalEvents(methodIDCFG));
+//                relevantShadows.addAll(methodIDCFG.alphabet);
             }
         }
 
@@ -183,6 +184,18 @@ public abstract class CFGAnalysis<St, T extends CFGEvent, MethodID extends Metho
             }
         });
         return new Pair<>(relevantShadows, reentersInvokingMethod);
+    }
+
+    public Set<Event<T>> getLocalEvents(CFG<St, T> methodIDCFG){
+        Set<Event<T>> localEvents = new HashSet<>();
+
+        for(Transition<Integer, T> t : methodIDCFG.transitions){
+            if(!t.source.equals(t.destination)) {
+                localEvents.add(t.event);
+            }
+        }
+
+        return localEvents;
     }
 
 //    Map<State, Set<MethodID>> statesPossiblyCalling
