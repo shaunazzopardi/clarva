@@ -286,8 +286,9 @@ public class PropertyTransformer extends SceneTransformer {
                 Map<JavaMethodIdentifier, CFG<Unit, JavaEvent>> wholeProgramCFGApproximations = new HashMap<>();
                 Set<Event<JavaEvent>> instrumentedEvents = null;
 
+                Set<JavaMethodIdentifier> methods = new HashSet<>(cfga.methodCFG.keySet());
                 //methodFSM not keeping only reachable methods
-                for (JavaMethodIdentifier method : cfga.methodCFG.keySet()) {
+                for (JavaMethodIdentifier method : methods) {
                     if (method.toString().contains("transactionGreylistedMenu")) {
                         System.out.print("");
                     }
