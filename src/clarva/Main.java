@@ -19,8 +19,14 @@ public class Main implements Runnable {
 
     public String[] args;
 
+    public boolean fast;
+
     public Main(String[] args){
         this.args = args;
+    }
+
+    public static void main(String[] args){
+        new Main(args).run();
     }
 
     public void run() {
@@ -34,7 +40,7 @@ public class Main implements Runnable {
         }
 
         {
-            Boolean fast = args[0].equals("fast") ? true : false;
+            fast = args[0].equals("fast") ? true : false;
             String property = args[1];//Arrays.asList(Arrays.copyOfRange(args, 1, args.length - 2));
 //		properties.remove(properties.size()-1);
             List<String> properties = new ArrayList<>();
@@ -59,7 +65,7 @@ public class Main implements Runnable {
 //			packagesToConsider.add("java.lang.invoke.LambdaMetafactory");
             //	packagesToConsider.add("java.util.*");
 //			//	packagesToConsider.add("java.io.*");
-            initializeSoot(fast, mainClass, programPath, packagesToConsider);
+            initializeSoot(mainClass, programPath, packagesToConsider);
 
 //			G.reset();
 
@@ -77,7 +83,7 @@ public class Main implements Runnable {
     }
 
     @SuppressWarnings("static-access")
-    private static void initializeSoot(boolean fast, String mainClass, String sootCp, Set<String> packagesToConsider) {
+    private void initializeSoot(String mainClass, String sootCp, Set<String> packagesToConsider) {
         G.v().reset();
 
         List<String> args = new ArrayList<>();
@@ -98,9 +104,10 @@ public class Main implements Runnable {
             args.add("-p");
             args.add("cg.spark");
             args.add("enabled:true,verbose:true");
-        } else {
+        }else{
             args.add("-no-bodies-for-excluded");
         }
+
         //analysis is sound as long as methods before an event triggering point is included
         //this is used to reduce time and memory needed
 //        Options.v().set_no_bodies_for_excluded(true);
