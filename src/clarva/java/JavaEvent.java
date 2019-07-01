@@ -55,13 +55,205 @@ public class JavaEvent extends CFGEvent {
         this.valueBinding = valueBinding;
     }
 
+    @Override
+    public JavaEvent abstractVersion(){
+        JavaEvent ev = new JavaEvent(invocation, unit, (MethodCall) dateEvent, valueBinding);
+
+        ev.outsideEvent = true;
+
+        return ev;
+    }
+
+    public Boolean typesMayMatch(JavaEvent s){
+        for(String var : this.objectBinding.keySet()){
+
+            if(this.objectBinding.get(var).first != null
+                && s.objectBinding.get(var) != null
+                && s.objectBinding.get(var).first != null) {
+
+                Type localType1 = this.objectBinding.get(var).first.getLocal().getType();
+                Type localType2 = s.objectBinding.get(var).first.getLocal().getType();
+
+                if (RefType.class.isAssignableFrom(localType1.getClass())
+                        && RefType.class.isAssignableFrom(localType2.getClass())) {
+                    SootClass type1Class = ((RefType) localType1).getSootClass();
+                    SootClass type2Class = ((RefType) localType2).getSootClass();
+
+                    if (!subStructureOf(type1Class, type2Class)
+                            && !subStructureOf(type2Class, type1Class)) {
+                        return false;
+                    }
+                }
+
+                Set<Type> types1 = new HashSet<>(this.objectBinding.get(var).first.getPointsToSet().possibleTypes());
+
+                Set<Type> types2 = new HashSet<>(s.objectBinding.get(var).first.getPointsToSet().possibleTypes());
+
+
+                for (Type type1 : types1) {
+                    for (Type type2 : types2) {
+                        if (type1.equals(type2)) continue;
+
+                        Type type1Here;
+                        if (AnySubType.class.isAssignableFrom(type1.getClass())) {
+                            type1Here = ((AnySubType) type1).getBase();
+                        } else {
+                            type1Here = type1;
+                        }
+
+                        Type type2Here;
+                        if (AnySubType.class.isAssignableFrom(type2.getClass())) {
+                            type2Here = ((AnySubType) type2).getBase();
+                        } else {
+                            type2Here = type2;
+                        }
+
+                        if (RefType.class.isAssignableFrom(type1Here.getClass())
+                                && RefType.class.isAssignableFrom(type2Here.getClass())) {
+                            SootClass type1Class = ((RefType) type1Here).getSootClass();
+                            SootClass type2Class = ((RefType) type2Here).getSootClass();
+
+                            if (subStructureOf(type1Class, type2Class)
+                                    || subStructureOf(type2Class, type1Class)) {
+                                continue;
+                            }
+                        }
+
+                        return false;
+                    }
+                }
+            } else if(this.objectBinding.get(var).first != null
+                    && s.objectBinding.get(var) != null
+                    && s.objectBinding.get(var).second != null) {
+
+                Set<Type> types1 = new HashSet<>(this.objectBinding.get(var).first.getPointsToSet().possibleTypes());
+                Type localType = this.objectBinding.get(var).first.getLocal().getType();
+                types1.add(localType);
+
+                Set<Type> types2 = s.objectBinding.get(var).second.possibleTypes();
+
+                for (Type type1 : types1) {
+                    for (Type type2 : types2) {
+                        if (type1.equals(type2)) continue;
+
+                        Type type1Here;
+                        if (AnySubType.class.isAssignableFrom(type1.getClass())) {
+                            type1Here = ((AnySubType) type1).getBase();
+                        } else {
+                            type1Here = type1;
+                        }
+
+                        Type type2Here;
+                        if (AnySubType.class.isAssignableFrom(type2.getClass())) {
+                            type2Here = ((AnySubType) type2).getBase();
+                        } else {
+                            type2Here = type2;
+                        }
+
+                        if (RefType.class.isAssignableFrom(type1Here.getClass())
+                                && RefType.class.isAssignableFrom(type2Here.getClass())) {
+                            SootClass type1Class = ((RefType) type1Here).getSootClass();
+                            SootClass type2Class = ((RefType) type2Here).getSootClass();
+
+                            if (subStructureOf(type1Class, type2Class)
+                                    || subStructureOf(type2Class, type1Class)) {
+                                continue;
+                            }
+                        }
+                        return false;
+                    }
+                }
+
+            } else if(this.objectBinding.get(var).second != null
+                    && s.objectBinding.get(var) != null
+                    && s.objectBinding.get(var).first != null) {
+
+                Set<Type> types1 = new HashSet<>(s.objectBinding.get(var).first.getPointsToSet().possibleTypes());
+                Type localType = s.objectBinding.get(var).first.getLocal().getType();
+                types1.add(localType);
+
+                Set<Type> types2 = this.objectBinding.get(var).second.possibleTypes();
+
+                for (Type type1 : types1) {
+                    for (Type type2 : types2) {
+                        if (type1.equals(type2)) continue;
+
+                        Type type1Here;
+                        if (AnySubType.class.isAssignableFrom(type1.getClass())) {
+                            type1Here = ((AnySubType) type1).getBase();
+                        } else {
+                            type1Here = type1;
+                        }
+
+                        Type type2Here;
+                        if (AnySubType.class.isAssignableFrom(type2.getClass())) {
+                            type2Here = ((AnySubType) type2).getBase();
+                        } else {
+                            type2Here = type2;
+                        }
+
+                        if (RefType.class.isAssignableFrom(type1Here.getClass())
+                                && RefType.class.isAssignableFrom(type2Here.getClass())) {
+                            SootClass type1Class = ((RefType) type1Here).getSootClass();
+                            SootClass type2Class = ((RefType) type2Here).getSootClass();
+
+                            if (subStructureOf(type1Class, type2Class)
+                                    || subStructureOf(type2Class, type1Class)) {
+                                continue;
+                            }
+                        }
+                        return false;
+                    }
+                }
+            } else if(this.objectBinding.get(var).second != null
+                    && s.objectBinding.get(var) != null
+                    && s.objectBinding.get(var).second != null) {
+                Set<Type> types1 = new HashSet<>(this.objectBinding.get(var).second.possibleTypes());
+
+
+                Set<Type> types2 = s.objectBinding.get(var).second.possibleTypes();
+
+                for (Type type1 : types1) {
+                    for (Type type2 : types2) {
+                        if (type1.equals(type2)) continue;
+
+                        Type type1Here;
+                        if (AnySubType.class.isAssignableFrom(type1.getClass())) {
+                            type1Here = ((AnySubType) type1).getBase();
+                        } else {
+                            type1Here = type1;
+                        }
+
+                        Type type2Here;
+                        if (AnySubType.class.isAssignableFrom(type2.getClass())) {
+                            type2Here = ((AnySubType) type2).getBase();
+                        } else {
+                            type2Here = type2;
+                        }
+
+                        if (RefType.class.isAssignableFrom(type1Here.getClass())
+                                && RefType.class.isAssignableFrom(type2Here.getClass())) {
+                            SootClass type1Class = ((RefType) type1Here).getSootClass();
+                            SootClass type2Class = ((RefType) type2Here).getSootClass();
+
+                            if (subStructureOf(type1Class, type2Class)
+                                    || subStructureOf(type2Class, type1Class)) {
+                                continue;
+                            }
+                        }
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
     //	static int i = 0;
     public void inferBinding(SootMethod method, LocalMustAliasAnalysis methodMustAlias, LocalMustNotAliasAnalysis methodMustNotAlias) {
         this.callingMethod = method;
 
-        if (method == null) {
-            System.out.print("");
-        }
         if (epsilon) return;
 
         MethodCall methodCallEvent = (MethodCall) dateEvent;
@@ -101,7 +293,6 @@ public class JavaEvent extends CFGEvent {
     }
 
     public boolean mayAlias(JavaEvent s) {
-
         if (s.callingMethod == null) {
             SootMethod sCallingMethod = JavaCFGAnalysis.cfgAnalysis.ma.invokeExprInMethod.get(s.invocation).method();
             Unit unitOfsCallingMethod = JavaCFGAnalysis.cfgAnalysis.ma.invokeExprToUnit.get(s.invocation);
@@ -121,10 +312,14 @@ public class JavaEvent extends CFGEvent {
             s.inferBinding(thisCallingMethod, JavaCFGAnalysis.cfgAnalysis.methodMustAlias.get(thisCallingMethodID), JavaCFGAnalysis.cfgAnalysis.methodMustNotAlias.get(thisCallingMethodID));
         }
 
+        //
         if (this.equals(s)) {
             return true;
+        } else if(!typesMayMatch(s)){
+            return false;
+        } else if(s.outsideEvent || this.outsideEvent){
+            return true;
         }
-
 
         //if shadows are in same method
 //		if(s.callingMethod.equals(this.callingMethod)){
@@ -155,62 +350,6 @@ public class JavaEvent extends CFGEvent {
 //								&& s.objectBinding.get(var).first.mayNotAlias(this.objectBinding.get(var).first)){
 //							return false;
 //						}
-
-                    {
-
-                        Type localType1 = this.objectBinding.get(var).first.getLocal().getType();
-                        Type localType2 = s.objectBinding.get(var).first.getLocal().getType();
-
-                        if (RefType.class.isAssignableFrom(localType1.getClass())
-                                && RefType.class.isAssignableFrom(localType2.getClass())) {
-                            SootClass type1Class = ((RefType) localType1).getSootClass();
-                            SootClass type2Class = ((RefType) localType2).getSootClass();
-
-                            if (!subStructureOf(type1Class, type2Class)
-                                    && !subStructureOf(type2Class, type1Class)) {
-                                return false;
-                            }
-                        }
-
-                        Set<Type> types1 = new HashSet<>(this.objectBinding.get(var).first.getPointsToSet().possibleTypes());
-//                        types1.add(localType1);
-
-                        Set<Type> types2 = new HashSet<>(s.objectBinding.get(var).first.getPointsToSet().possibleTypes());
-//                        types2.add(localType2);
-
-
-                        for (Type type1 : types1) {
-                            for (Type type2 : types2) {
-                                if (type1.equals(type2)) continue;
-
-                                Type type1Here;
-                                if (AnySubType.class.isAssignableFrom(type1.getClass())) {
-                                    type1Here = ((AnySubType) type1).getBase();
-                                } else {
-                                    type1Here = type1;
-                                }
-
-                                Type type2Here;
-                                if (AnySubType.class.isAssignableFrom(type2.getClass())) {
-                                    type2Here = ((AnySubType) type2).getBase();
-                                } else {
-                                    type2Here = type2;
-                                }
-
-                                if (RefType.class.isAssignableFrom(type1Here.getClass())
-                                        && RefType.class.isAssignableFrom(type2Here.getClass())) {
-                                    SootClass type1Class = ((RefType) type1Here).getSootClass();
-                                    SootClass type2Class = ((RefType) type2Here).getSootClass();
-
-                                    if (subStructureOf(type1Class, type2Class)
-                                            || subStructureOf(type2Class, type1Class)) {
-                                        continue;
-                                    }
-                                }
-                            }
-                        }
-
-                    }
                 } else if (s.objectBinding.get(var).first != null
                         && this.objectBinding.get(var).second != null) {
 
@@ -220,45 +359,7 @@ public class JavaEvent extends CFGEvent {
                         return false;
                     }
 
-                    {
-                        Set<Type> types1 = new HashSet<>(s.objectBinding.get(var).first.getPointsToSet().possibleTypes());
-                        Type localType = s.objectBinding.get(var).first.getLocal().getType();
-                        types1.add(localType);
 
-                        Set<Type> types2 = this.objectBinding.get(var).second.possibleTypes();
-
-                        for (Type type1 : types1) {
-                            for (Type type2 : types2) {
-                                if (type1.equals(type2)) continue;
-
-                                Type type1Here;
-                                if (AnySubType.class.isAssignableFrom(type1.getClass())) {
-                                    type1Here = ((AnySubType) type1).getBase();
-                                } else {
-                                    type1Here = type1;
-                                }
-
-                                Type type2Here;
-                                if (AnySubType.class.isAssignableFrom(type2.getClass())) {
-                                    type2Here = ((AnySubType) type2).getBase();
-                                } else {
-                                    type2Here = type2;
-                                }
-
-                                if (RefType.class.isAssignableFrom(type1Here.getClass())
-                                        && RefType.class.isAssignableFrom(type2Here.getClass())) {
-                                    SootClass type1Class = ((RefType) type1Here).getSootClass();
-                                    SootClass type2Class = ((RefType) type2Here).getSootClass();
-
-                                    if (subStructureOf(type1Class, type2Class)
-                                            || subStructureOf(type2Class, type1Class)) {
-                                        continue;
-                                    }
-                                }
-                            }
-                        }
-
-                    }
                 } else if (s.objectBinding.get(var).second != null
                         && this.objectBinding.get(var).first != null) {
 
@@ -268,44 +369,6 @@ public class JavaEvent extends CFGEvent {
                         return false;
                     }
 
-                    {
-                        Set<Type> types1 = new HashSet<>(this.objectBinding.get(var).first.getPointsToSet().possibleTypes());
-                        Type localType = this.objectBinding.get(var).first.getLocal().getType();
-                        types1.add(localType);
-
-                        Set<Type> types2 = s.objectBinding.get(var).second.possibleTypes();
-
-                        for (Type type1 : types1) {
-                            for (Type type2 : types2) {
-                                if (type1.equals(type2)) continue;
-
-                                Type type1Here;
-                                if (AnySubType.class.isAssignableFrom(type1.getClass())) {
-                                    type1Here = ((AnySubType) type1).getBase();
-                                } else {
-                                    type1Here = type1;
-                                }
-
-                                Type type2Here;
-                                if (AnySubType.class.isAssignableFrom(type2.getClass())) {
-                                    type2Here = ((AnySubType) type2).getBase();
-                                } else {
-                                    type2Here = type2;
-                                }
-
-                                if (RefType.class.isAssignableFrom(type1Here.getClass())
-                                        && RefType.class.isAssignableFrom(type2Here.getClass())) {
-                                    SootClass type1Class = ((RefType) type1Here).getSootClass();
-                                    SootClass type2Class = ((RefType) type2Here).getSootClass();
-
-                                    if (subStructureOf(type1Class, type2Class)
-                                            || subStructureOf(type2Class, type1Class)) {
-                                        continue;
-                                    }
-                                }
-                            }
-                        }
-                    }
                 } else if (s.objectBinding.get(var).second != null
                         && this.objectBinding.get(var).second != null) {
 
@@ -313,44 +376,6 @@ public class JavaEvent extends CFGEvent {
                     if (s.callingMethod.equals(this.callingMethod)
                             && !this.objectBinding.get(var).second.hasNonEmptyIntersection(s.objectBinding.get(var).second)) {
                         return false;
-                    }
-
-                    {
-                        Set<Type> types1 = new HashSet<>(this.objectBinding.get(var).second.possibleTypes());
-
-
-                        Set<Type> types2 = s.objectBinding.get(var).second.possibleTypes();
-
-                        for (Type type1 : types1) {
-                            for (Type type2 : types2) {
-                                if (type1.equals(type2)) continue;
-
-                                Type type1Here;
-                                if (AnySubType.class.isAssignableFrom(type1.getClass())) {
-                                    type1Here = ((AnySubType) type1).getBase();
-                                } else {
-                                    type1Here = type1;
-                                }
-
-                                Type type2Here;
-                                if (AnySubType.class.isAssignableFrom(type2.getClass())) {
-                                    type2Here = ((AnySubType) type2).getBase();
-                                } else {
-                                    type2Here = type2;
-                                }
-
-                                if (RefType.class.isAssignableFrom(type1Here.getClass())
-                                        && RefType.class.isAssignableFrom(type2Here.getClass())) {
-                                    SootClass type1Class = ((RefType) type1Here).getSootClass();
-                                    SootClass type2Class = ((RefType) type2Here).getSootClass();
-
-                                    if (subStructureOf(type1Class, type2Class)
-                                            || subStructureOf(type2Class, type1Class)) {
-                                        continue;
-                                    }
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -386,6 +411,7 @@ public class JavaEvent extends CFGEvent {
     public boolean mustAlias(JavaEvent s) {
         //an object at a certain statement does not necessarily always alias with itself
 //		if(this.equals(s)) return true;
+        if(outsideEvent) return false;
         if (!this.mayAlias(s)) return false;
 
         for (String var : this.objectBinding.keySet()) {
