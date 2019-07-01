@@ -176,8 +176,9 @@ public class SubsetDate extends DateFSM {
 
         if (removeUnreachablePart) {
             this.reachabilityReduction();
+        } else{
+            removeUnusedEvents();
         }
-
     }
 
     @Override

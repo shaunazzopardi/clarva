@@ -427,6 +427,8 @@ public class DateFSM extends FSM<String, DateLabel> {
         this.retainOnly(usefulStatesLabels);
 
         this.removeStatesNotReachableFromInitialState();
+
+        removeUnusedEvents();
     }
 
     public void addAcceptingState(State<String, DateLabel> state) {
