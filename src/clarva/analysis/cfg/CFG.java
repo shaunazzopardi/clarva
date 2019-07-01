@@ -71,7 +71,6 @@ public class CFG<St, Ev extends CFGEvent> extends FSM<Integer, Ev> {
 
     //only use for control-flow analysis
     public void reduce() {
-
         //if the CFG is not hierarchical
         //i.e. if no state has some further interal computation
         if (this.internalFSMs.size() == 0) {
@@ -82,24 +81,6 @@ public class CFG<St, Ev extends CFGEvent> extends FSM<Integer, Ev> {
                 if (!letter.label.epsilon) {
                     allEpsilon = false;
                 }
-            }
-
-            //if there is no dateEvent that is not an epsilon dateEvent
-            //then remove all control-flow and return
-            if (allEpsilon) {
-                this.states.clear();
-                this.transitions.clear();
-                this.finalStates.clear();
-                this.states.addAll(this.initial);
-                State<Integer, Ev> onlyState = this.initial.iterator().next();
-
-                onlyState.incomingTransitions.clear();
-                onlyState.outgoingTransitions.clear();
-
-                this.initial.clear();
-                this.initial.add(onlyState);
-                this.finalStates.add(onlyState);
-                return;
             }
         }
 
@@ -151,38 +132,8 @@ public class CFG<St, Ev extends CFGEvent> extends FSM<Integer, Ev> {
 
                         this.addTransition(incomingState, outgoingEvents.get(0), outgoingState);
 
-//						if(state.getInternalFSM() != null) outgoingState.setInternalFSM(state.getInternalFSM());
-
-//						outgoingState.addOutgoingTransitions(state.outgoingTransitions);
-//						outgoingState.addOutgoingTransitions(state.incomingTransitions);
                         i--;
                     }
-                    //else if state has no internal fsm
-//					else if(state.getInternalFSM() == null
-//							&& !(incomingState.getInternalFSM() == null)
-//						    && (outgoingState.getInternalFSM() == null)){
-//						stateList.remove(state);
-//						
-//						incomingState.outgoingTransitions.get(incomingEvents.get(0)).remove(state);
-//						outgoingState.setInternalFSM(incomingState.getInternalFSM());
-////						outgoingState.addOutgoingTransitions(incomingState.outgoingTransitions);
-////						outgoingState.addOutgoingTransitions(incomingState.incomingTransitions);
-//						i--;
-//					}
-//					else if(state.getInternalFSM() == null){
-//						stateList.remove(state);
-//						
-//						if(incomingState.outgoingTransitions.get(incomingEvents.get(0)).size() == 1)
-//						{
-//							incomingState.outgoingTransitions.remove(incomingEvents.get(0));
-//						}
-//						else{
-//							incomingState.outgoingTransitions.get(incomingEvents.get(0)).remove(state);
-//						}
-////						outgoingState.addOutgoingTransitions(incomingState.outgoingTransitions);
-////						outgoingState.addOutgoingTransitions(incomingState.incomingTransitions);
-//						i--;
-//					}
                 }
             }
         }
@@ -209,5 +160,66 @@ public class CFG<St, Ev extends CFGEvent> extends FSM<Integer, Ev> {
         }
 
         this.transitions = newTransitions;
+    }
+
+    public String toString(){
+        String dot = "";
+
+        dot += "digraph \"" + methodID.toString() + "\"{\n";
+
+        Set<String> transitions = transitionsRepresentationOf(new HashSet<>(), initial);
+
+        for(String trans : transitions){
+            dot += trans;
+        }
+
+        for(State<Integer, Ev> state : states){
+            if(state.getInternalFSM() != null) {
+                String callName = state.getInternalFSM().name;
+
+                if (!callName.trim().equals("")) {
+                    dot += state.label + "[style=filled, color=gray,label=\"call: " + callName + "\"";
+                }
+            }
+        }
+
+        dot += "}\n";
+
+        return dot;
+    }
+
+    public Set<String> transitionsRepresentationOf(Set<State<Integer, Ev>> toIgnore, Set<State<Integer, Ev>> fromStates){
+        Set<State<Integer, Ev>> next = new HashSet<>(fromStates);
+        Set<String> dotTransitions = new HashSet<>();
+
+        while(next.size() > 0) {
+            toIgnore.addAll(next);
+
+            Set<State<Integer, Ev>> current = new HashSet<>(next);
+            next.clear();
+
+            for (State<Integer, Ev> state : current) {
+                for (Map.Entry<Event<Ev>, Set<Integer>> entry : state.outgoingTransitions.entrySet()) {
+                    for (Integer dst : entry.getValue()) {
+                        String dotTransition = state.label + "";
+                        dotTransition += " -> ";
+                        dotTransition += dst;
+                        dotTransition += "[label=\" >> >> ";
+                        dotTransition += entry.getKey().label.toString(); //TODO not sure about this
+                        dotTransition += "\"];\n";
+
+                        dotTransitions.add(dotTransition);
+
+                        next.add(integerToState.get(dst));
+                    }
+                }
+            }
+
+            next.removeAll(toIgnore);
+        }
+
+//        dotTransitions.addAll(transitionsRepresentationOf(toIgnore, next));
+
+        return dotTransitions;
     }
 }
