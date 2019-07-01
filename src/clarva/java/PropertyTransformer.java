@@ -270,10 +270,6 @@ public class PropertyTransformer extends SceneTransformer {
 
                 //methodFSM not keeping only reachable methods
                 for (JavaMethodIdentifier method : cfga.methodCFG.keySet()) {
-                    if (method.toString().contains("transactionMenu")) {
-                        System.out.print("");
-                    }
-
                     //important to do this before wholeprogram CFG is generated
                     //TODO wholeprogramCFGs should not edit methodCFG but create new CFG
                     //as it is cfga.methodCFGToWholeProgramCFG modifies the values of methodCFG
@@ -336,6 +332,7 @@ public class PropertyTransformer extends SceneTransformer {
 
                         instrumentedEvents = new HashSet<>();
 
+                        //identify all instrumented events that match a transition in some residual artifact
                         for (ResidualArtifact residualArtifact : residualArtifacts.values()) {
                             if (residualArtifact.eventsAssociatedWithTransitions != null) {
                                 for (Event event : (Collection<Event>) residualArtifact.eventsAssociatedWithTransitions.keySet()) {
@@ -355,26 +352,7 @@ public class PropertyTransformer extends SceneTransformer {
 
                 eventsToMonitorFor.put(property, union.second);
 
-                ///For debugging
-                if (union.first.startingState.label.equals("")) {
-                    System.out.print("");
-                }
-
-                if (!union.first.neverFails) {
-//					System.out.println("After 3rd:");
-//					System.out.println(union.first);
-                }
-
                 return union.first;
-//				actionOnEnd(unionOfResiduals);
-//
-//				System.out.println();
-//				System.out.println("Potential points of failure:");
-//				System.out.println();
-//				for(Pair<String,String> ppf : residualsAndPPF.second){
-//					System.out.println(ppf);
-//				}
-
             }
         }
 

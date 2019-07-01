@@ -17,7 +17,7 @@ public class ProgramModifier {
 
     static SootClass monitoredEventClass = null;
 
-    //TODO implement this.
+    //TODO implement context-sensitive instrumentation silencing
     // Maybe create monitored versions of functions in larva monitored system
     //	and have any instrumented calls use those functions
     public static boolean dynamicallyInstrumentedMethod(SootMethod method) throws IOException {

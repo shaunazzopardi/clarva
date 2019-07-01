@@ -446,18 +446,6 @@ public class Matching {
             Context c2 = otherShadow.unit;
             PointsToSet secondP2S = p2a.reachingObjects(c2, (Local) otherShadow.valueBinding.get(var));
 
-//					if(firstP2S.hasNonEmptyIntersection(secondP2S))
-//						System.out.println("hello");
-//
-//					if(firstP2S.hasNonEmptyIntersection(firstP2S))
-//						System.out.println("hello");
-//
-//					if(secondP2S.hasNonEmptyIntersection(secondP2S))
-//						System.out.println("hello");
-//
-//					if(firstP2S.equals(secondP2S))
-//						System.out.println("hello");
-
             if ((!firstP2S.hasNonEmptyIntersection(secondP2S) && !(shadow.equals(otherShadow)))
                     && !(firstP2S instanceof EmptyPointsToSet || secondP2S instanceof EmptyPointsToSet)) {
                 allVarsHereCompatible = false;
