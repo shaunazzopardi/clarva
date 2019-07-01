@@ -18,7 +18,7 @@ cLARVA (= [clara](https://github.com/Sable/clara) + [LARVA](http://www.cs.um.edu
 3. *root directory of* compiled Java program (in eclipse, the bin directory); and
 4. *Canonical name* of the Main class of program (of the form \<package-name\>.\<class-name\>).
 
-Example call: **fast -jar clarva.jar java "./date.lrv" "./bin" main.Main**
+Example call: **-jar clarva.jar fast java "./date.lrv" "./bin" main.Main**
 
 **Output**: 
 1. A DATE that is a pruned version of Input (2), with which it is enough to monitor Input (3).
