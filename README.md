@@ -1,7 +1,7 @@
 # cLARVA
 Residual analysis for properties as symbolic automata
 
-cLARVA (= [clara](https://github.com/Sable/clara) + [LARVA](http://www.cs.um.edu.mt/svrg/Tools/LARVA/)) is a tool aimed to reduce some of the overheads associated with runtime verifiying Java programs with *Dynamic Automata with Events and Timers* (DATEs), and variants thereof. The tool attempts to find parts of the program that can be ignored soundly for verification, and to remove transitions in a DATE that can never match a program execution step at runtime.  [Soot](https://github.com/Sable/soot), a Java bytecode analyser, is used to support this analysis.
+cLARVA (= [clara](https://github.com/Sable/clara) + [LARVA](http://www.cs.um.edu.mt/svrg/Tools/LARVA/)) is a tool aimed to reduce some of the overheads associated with runtime verifiying Java programs with *Dynamic Automata with Events and Timers* (DATEs), and variants thereof. The tool attempts to find parts of the program that can be ignored soundly for verification, and to remove transitions in a DATE that are not needed to identify a violation at runtime. [Soot](https://github.com/Sable/soot), a Java bytecode analyser, is used to support this analysis.
 
 **Limitations**:
 
