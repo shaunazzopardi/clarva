@@ -249,10 +249,6 @@ public abstract class CFGAnalysis<St, T extends CFGEvent, MethodID extends Metho
         for (int i = 0; i < stateList.size(); i++) {
             State<Integer, T> state = stateList.get(i);
 
-            if (method.toString().contains("mutateSome")
-                    && state.label == 18) {
-                System.out.print("");
-            }
 
             if (state.getInternalFSM() != null) {
                 //add loops for all shadows relevant to internalFSM
@@ -263,20 +259,24 @@ public abstract class CFGAnalysis<St, T extends CFGEvent, MethodID extends Metho
 
                 relevantShadowsAndReentrantCall.first.removeAll(methodCFG.alphabet);
                 for (Event<T> shadow : relevantShadowsAndReentrantCall.first) {
-                    wholeProgramCFG.addTransition(state, shadow, state);
+                    wholeProgramCFG.addTransition(state, new Event(shadow.label.abstractVersion()), state);
                 }
 
                 //are the two conditions disjuncted below equal? they should be i think
                 if (methodInvokedHere == null) {
                     state.setInternalFSM(null);
                 } else if (relevantShadowsAndReentrantCall.second) {
-                    for (State<Integer, T> initial : wholeProgramCFG.initial) {
-                        wholeProgramCFG.addTransition(state, epsilonAction, initial);
+                    for (Event<T> ev : wholeProgramCFG.alphabet) {
+                        wholeProgramCFG.addTransition(state, new Event(ev.label.abstractVersion()), state);
                     }
 
-                    for (State<Integer, T> finalState : wholeProgramCFG.finalStates) {
-                        wholeProgramCFG.addTransition(finalState, epsilonAction, state);
-                    }
+//                    for (State<Integer, T> initial : wholeProgramCFG.initial) {
+//                        wholeProgramCFG.addTransition(state, epsilonAction, initial);
+//                    }
+//
+//                    for (State<Integer, T> finalState : wholeProgramCFG.finalStates) {
+//                        wholeProgramCFG.addTransition(finalState, epsilonAction, state);
+//                    }
                 }
 
 //                state.setInternalFSM(null);
@@ -288,10 +288,6 @@ public abstract class CFGAnalysis<St, T extends CFGEvent, MethodID extends Metho
 
     public CFG<St, T> approximateBeforeAndAfter(MethodID method, CFG<St, T> methodCFG) {
 
-        if (method.toString().contains("performInvalidUse")) {
-            System.out.print("");
-        }
-
         CFG<St, T> wholeProgramCFG = methodCFG;// new CFG(methodCFG);//new FSM<Unit, Shadow>(methodCFG);
         if (!mainMethods.contains(method)) {
 
@@ -299,28 +295,29 @@ public abstract class CFGAnalysis<St, T extends CFGEvent, MethodID extends Metho
 
             for (State<Integer, T> initial : wholeProgramCFG.initial) {
                 Set<Event<T>> before = new HashSet<>(beforeAfter.first);
-                before.removeAll(methodCFG.alphabet);
+//                before.removeAll(methodCFG.alphabet);
 
                 for (Event<T> shadow : before) {
-                    wholeProgramCFG.addTransition(initial, shadow, initial);
+                    wholeProgramCFG.addTransition(initial, new Event(shadow.label.abstractVersion()), initial);
                 }
             }
 
             for (State<Integer, T> finalState : wholeProgramCFG.finalStates) {
                 //add restofprogram alphabet loops
                 Set<Event<T>> after = new HashSet<>(beforeAfter.second);
-                after.removeAll(methodCFG.alphabet);
+//                after.removeAll(methodCFG.alphabet);
 
                 for (Event<T> shadow : after) {
-                    wholeProgramCFG.addTransition(finalState, shadow, finalState);
+                    wholeProgramCFG.addTransition(finalState, new Event(shadow.label.abstractVersion()), finalState);
+       //             wholeProgramCFG.toString();
                 }
 
-                if (after.size() != beforeAfter.second.size()) {
-                    //we should only do this if methods can invoke this method can again invoke it after
-                    for (State<Integer, T> initial : wholeProgramCFG.initial) {
-                        wholeProgramCFG.addTransition(finalState, this.epsilonAction, initial);
-                    }
-                }
+//                if (after.size() != beforeAfter.second.size()) {
+//                    //we should only do this if methods can invoke this method can again invoke it after
+//                    for (State<Integer, T> initial : wholeProgramCFG.initial) {
+//                        wholeProgramCFG.addTransition(finalState, this.epsilonAction, initial);
+//                    }
+//                }
             }
         }
 
