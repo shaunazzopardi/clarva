@@ -23,6 +23,21 @@ public class FSM<T, S> {
 
     public boolean neverFails;
 
+    public boolean mismatch(){
+
+        for(Transition<T, S> transition : this.transitions){
+            if(!transition.source.outgoingTransitions.get(transition.event).contains(transition.destination)){
+                return false;
+            }
+
+            if(!transition.destination.incomingTransitions.get(transition.event).contains(transition.source)){
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public FSM() {
         name = "";
         states = new HashSet<State<T, S>>();
@@ -232,10 +247,11 @@ public class FSM<T, S> {
         if (state == null) {
             System.out.println("");
         }
-        if (!this.states.contains(state)) {
-            thisState = getOrAddState(state.label);
-        } else {
+        if(this.labelToState.containsKey(state.label)){
             thisState = this.labelToState.get(state.label);
+        }
+        else {
+            thisState = getOrAddState(state.label);
         }
 
         for (Event<S> event : state.outgoingTransitions.keySet()) {
