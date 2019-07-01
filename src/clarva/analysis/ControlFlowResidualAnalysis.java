@@ -95,14 +95,11 @@ public class ControlFlowResidualAnalysis {
                 SubsetDate oldResidual = residuals.get(s);
                 SubsetDate newResidual = cfga.sufficientResidual(s, approx, oldResidual, aliasing);
                 if (newResidual == null || newResidual.neverFails) {
-//					System.out.println("here");
+
                     newResidual = cfga.sufficientResidual(s, approx, oldResidual, aliasing);
                 }
                 residuals.put(s, newResidual);
 
-//				if(!residuals.toString().toLowerCase().contains("property")){
-//					System.out.println("here");
-//				}
             }
         }
         residuals = removeEmptyDates(residuals);
@@ -142,9 +139,6 @@ public class ControlFlowResidualAnalysis {
                 shadowsUpToMustAlias.retainAll(residuals.keySet());
             }
 
-            if (methodName.contains("transactionGreylistedMenu")) {
-                System.out.print("");
-            }
 
             for (T shadow : shadowsUpToMustAlias) {
 
@@ -175,8 +169,9 @@ public class ControlFlowResidualAnalysis {
                     JavaEvent javaEvent = (JavaEvent) event.label;
 
                     //if the event occurs outside the method being abstracted
-                    if (!((JavaEvent) shadow).callingMethod.equals(javaEvent.callingMethod)) {
+                    if (!((JavaEvent) shadow).callingMethod.equals(javaEvent.callingMethod) && !event.label.epsilon) {
 
+                        Set<Transition<String, DateLabel>> associatedTransitionsInOtherCompositions = new HashSet<>();
                         //check each other abstraction (we should always find one such entry, otherwise it does not occur)
                         for (ResidualArtifact residualArtifact1 : localShadowToResidual) {
                             //and if we find another entry where the event occurs in the abstracted method
@@ -184,12 +179,16 @@ public class ControlFlowResidualAnalysis {
 
                                 //then keep only the DATE transitions associated with that event in the abstraction in which it occurs
                                 if (residualArtifact1.eventsAssociatedWithTransitions.containsKey(event)) {
-                                    newAssociatedTransitions.retainAll((Collection<?>) residualArtifact1.eventsAssociatedWithTransitions.get(event));
-                                } else {
-                                    newAssociatedTransitions.clear();
+                                    associatedTransitionsInOtherCompositions.addAll((Collection<? extends Transition<String, DateLabel>>) residualArtifact1.eventsAssociatedWithTransitions.get(event));
+//                                    newAssociatedTransitions.retainAll((Collection<?>) residualArtifact1.eventsAssociatedWithTransitions.get(event));
                                 }
+//                                else {
+//                                    newAssociatedTransitions.clear();
+//                                }
                             }
                         }
+
+                        newAssociatedTransitions.retainAll(associatedTransitionsInOtherCompositions);
                     } else { //else if the event occurs inside the method being abstracted, then simply replicate it
                         newAssociatedTransitions = eventsAssociatedWithTransitions.get(event);
                     }
@@ -229,10 +228,6 @@ public class ControlFlowResidualAnalysis {
     public static <T extends CFGEvent> Set<T> paritionUpToMustAlias(Set<T> shadows, Aliasing aliasing) {
         Set<T> allShadowsUpToMustAlias = new HashSet<>();
         Map<T, Set<T>> mustAlias = new HashMap<>();
-
-        if (shadows == null) {
-            System.out.print("");
-        }
 
         for (T s : shadows) {
             Set<T> must = new HashSet<>();
