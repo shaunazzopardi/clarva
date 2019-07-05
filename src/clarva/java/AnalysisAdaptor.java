@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AnalysisAdaptor {
-    public static List<DateEvent> allEvents(MethodsAnalysis ma) {
+    public static List<DateEvent> allEvents(JavaMethodsAnalysis ma) {
         List<DateEvent> usedActions = new ArrayList<>();
 
         for (MethodCall event : ma.dateEventToSootMethods.keySet()) {

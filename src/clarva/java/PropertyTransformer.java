@@ -214,7 +214,7 @@ public class PropertyTransformer extends SceneTransformer {
 
     public DateFSM computeResidual(DateFSM property, boolean quickcheck, boolean orphans) {
 
-        MethodsAnalysis ma = new MethodsAnalysis(Scene.v(), property.alphabet);
+        JavaMethodsAnalysis ma = new JavaMethodsAnalysis(Scene.v(), property.alphabet);
 //		ClassHierarchy.classHierarchy(Scene.v());
 
         List<DateEvent> allUsedEvents = AnalysisAdaptor.allEvents(ma);
@@ -231,7 +231,7 @@ public class PropertyTransformer extends SceneTransformer {
 
             Matching am = new Matching(ma);
 
-            Set<JavaEvent> allShadows = ma.allShadows;
+            Set<JavaEvent> allShadows = ma.allEventsInProgram;
 
             //need to reduce shadows up to must-alias here.. using less precise flow-insensitive points-to analysis
             Map<JavaEvent, SubsetDate> residuals = ControlFlowResidualAnalysis.OrphansAnalysis(residual,

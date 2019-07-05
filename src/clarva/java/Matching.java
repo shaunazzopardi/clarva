@@ -19,9 +19,9 @@ import java.util.Set;
 
 public class Matching {
 
-    public MethodsAnalysis ma;
+    public JavaMethodsAnalysis ma;
 
-    public Matching(MethodsAnalysis ma) {
+    public Matching(JavaMethodsAnalysis ma) {
         this.ma = ma;
     }
 
@@ -413,8 +413,8 @@ public class Matching {
 //		Unit unit = ma.invokeExprToUnit.get(method);
 //		Unit otherUnit = ma.invokeExprToUnit.get(method);
 //						
-//		for(Shadow shadow : ma.unitShadows.get(unit)){
-//			for(Shadow otherShadow : ma.unitShadows.get(otherUnit)){
+//		for(Shadow shadow : ma.unitJavaEvents.get(unit)){
+//			for(Shadow otherShadow : ma.unitJavaEvents.get(otherUnit)){
 //			
 //				if(!shadow.mayAlias(otherShadow)){
 //					return false;

@@ -5,7 +5,6 @@ import fsm.date.events.ChannelEvent;
 import fsm.date.events.ClockEvent;
 import fsm.date.events.MethodCall;
 import fsm.helper.Pair;
-import org.apache.commons.lang3.ClassUtils;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import soot.*;
 import soot.jimple.InvokeExpr;
@@ -21,12 +20,25 @@ import java.util.Set;
 
 import static clarva.java.Matching.subStructureOf;
 
+/// This class represents an invocation event in a Java program execution
 public class JavaEvent extends CFGEvent {
 
-    public InvokeExpr invocation;
-    public Map<String, Pair<InstanceKey, PointsToSet>> objectBinding = new HashMap<String, Pair<InstanceKey, PointsToSet>>();
+    //Statement being executed
     public Stmt unit;
+
+    //Invocation performed by statement
+    //@ invariant unit.getInvokeExpr() == invocation
+    public InvokeExpr invocation;
+
+    //Object abstraction binding the DATE's foreach variables to abstract objects
+    //@ invariant (this.dateEvent.getClass().equals(MethodCall.class) ==> ((MethodCall) this.dateEvent).forEachVariables.containsAll(objectBinding.keySet()))
+    public Map<String, Pair<InstanceKey, PointsToSet>> objectBinding = new HashMap<String, Pair<InstanceKey, PointsToSet>>();
+
+    //Method in which this event occurs
+    //@ invariant (callingMethod == null || callingMethod.getActiveBody().getUnits().contains(unit))
     public SootMethod callingMethod;
+
+    //Value (constant or expression) associated with each foreach variable
     public Map<String, Value> valueBinding;
 
     public JavaEvent() {
@@ -64,6 +76,10 @@ public class JavaEvent extends CFGEvent {
         return ev;
     }
 
+    //Checks whether the types of the object bindings of foreach vars in this event
+    // and the parameter event are compatible.
+    // Note how if they are not compatible then we can determine they may not alias
+    //@ require typesMayMatch(this)
     public Boolean typesMayMatch(JavaEvent s){
         for(String var : this.objectBinding.keySet()){
 
@@ -250,51 +266,45 @@ public class JavaEvent extends CFGEvent {
         return true;
     }
 
-    //	static int i = 0;
+    //Infers object binding associated with each foreach vars
     public void inferBinding(SootMethod method, LocalMustAliasAnalysis methodMustAlias, LocalMustNotAliasAnalysis methodMustNotAlias) {
         this.callingMethod = method;
 
         if (epsilon) return;
 
-        MethodCall methodCallEvent = (MethodCall) dateEvent;
-        for (String var : methodCallEvent.forEachVariables) {
-            Local local = (Local) valueBinding.get(var);
-            Stmt stmt = (Stmt) unit;
-            //we have a problem with the following kind of vars: foreachvars(Account a, User u = a.u)
-            //We can't calculate a.u currenty. but do we need to really?
-            //In this case no, since shadow(a) != shadow(a') => shadow(u) != shadow(u')
-            //But in general we can have an aribitrary a.equals() function that does not depend on a.u
-            //e.g. a.equals(a') <= a.value = a'.value
-            //For ppDate's, if they don't use Larva's method of instanstiating fields we don't have a problem
-            //Otherwise heq, maybe Bodden's Boomerang can help
-//			i++;
-//			System.out.println(i);
+        if(dateEvent.getClass().equals(MethodCall.class)) {
+            MethodCall methodCallEvent = (MethodCall) dateEvent;
+            for (String var : methodCallEvent.forEachVariables) {
+                Local local = (Local) valueBinding.get(var);
+                Stmt stmt = (Stmt) unit;
+                //we have a problem with field vars: foreachvars(Account a, User u = a.u)
+                //We can't calculate a.u currently. but do we need to really?
+                //In this case no, since shadow(a) != shadow(a') => shadow(u) != shadow(u')
+                //But in general we can have an aribitrary a.equals() function that does not depend on a.u
+                //e.g. a.equals(a') <= a.value = a'.value
+                //For ppDate's, if they don't use Larva's method of instanstiating fields we don't have a problem
+                //Otherwise heq, maybe Bodden's Boomerang can help
 
-//			////what about when local = this?
-//			if(local.getName().equals("this")) {
-//				objectBinding.put(var, null);
-//				continue;
-//			}
+                InstanceKey key = null;
+                PointsToSet objSet = null;
 
-            InstanceKey key = null;
-            PointsToSet objSet = null;
-
-            if (local != null) {
-                try {
-                    key = new InstanceKey(local, stmt, method, methodMustAlias, methodMustNotAlias);
-                } catch (Exception e) {
-                    PointsToAnalysis pta = Scene.v().getPointsToAnalysis();
-                    objSet = pta.reachingObjects(method.context(), local);
-                    // e.printStackTrace();
+                if (local != null) {
+                    try {
+                        key = new InstanceKey(local, stmt, method, methodMustAlias, methodMustNotAlias);
+                    } catch (Exception e) {
+                        //this will be used with "fast" analysis
+                        PointsToAnalysis pta = Scene.v().getPointsToAnalysis();
+                        objSet = pta.reachingObjects(method.context(), local);
+                    }
                 }
+                objectBinding.put(var, new Pair<>(key, objSet));
             }
-            objectBinding.put(var, new Pair<>(key, objSet));
         }
     }
 
     public boolean mayAlias(JavaEvent s) {
         if (s.callingMethod == null) {
-            SootMethod sCallingMethod = JavaCFGAnalysis.cfgAnalysis.ma.invokeExprInMethod.get(s.invocation).method();
+            SootMethod sCallingMethod = JavaCFGAnalysis.cfgAnalysis.ma.methodMakingInvocation.get(s.invocation).method();
             Unit unitOfsCallingMethod = JavaCFGAnalysis.cfgAnalysis.ma.invokeExprToUnit.get(s.invocation);
 
             JavaMethodIdentifier sCallingMethodID = (JavaMethodIdentifier) JavaCFGAnalysis.cfgAnalysis.statementCalledBy.get(unitOfsCallingMethod);
@@ -304,7 +314,7 @@ public class JavaEvent extends CFGEvent {
         }
 
         if (this.callingMethod == null) {
-            SootMethod thisCallingMethod = JavaCFGAnalysis.cfgAnalysis.ma.invokeExprInMethod.get(this.invocation).method();
+            SootMethod thisCallingMethod = JavaCFGAnalysis.cfgAnalysis.ma.methodMakingInvocation.get(this.invocation).method();
             Unit unitOfthisCallingMethod = JavaCFGAnalysis.cfgAnalysis.ma.invokeExprToUnit.get(this.invocation);
 
             JavaMethodIdentifier thisCallingMethodID = (JavaMethodIdentifier) JavaCFGAnalysis.cfgAnalysis.statementCalledBy.get(unitOfthisCallingMethod);
@@ -380,30 +390,6 @@ public class JavaEvent extends CFGEvent {
                 }
             }
         }
-//		}
-//		else{
-//
-//		}
-
-        return true;
-    }
-
-    public boolean classesNonIntersecting(String type1Name, String type2Name) {
-        try {
-//			Hierarchy activeHierarchy = Scene.v().getActiveHierarchy();
-
-            Class<?> type1Class = ClassUtils.getClass(type1Name);
-            Class<?> type2Class = ClassUtils.getClass(type2Name);
-
-            if (!type1Name.equals(type2Name)
-                    && !type1Class.isAssignableFrom(type2Class)
-                    && !type2Class.isAssignableFrom(type1Class)) {
-                return false;
-            }
-
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
 
         return true;
     }
@@ -433,17 +419,6 @@ public class JavaEvent extends CFGEvent {
 
 
                 }
-//				else if(s.objectBinding.get(var).second != null && this.objectBinding.get(var).second != null){
-//					if(s.objectBinding.get(var).second.getClass().equals(FullObjectSet.class)
-//						&& this.objectBinding.get(var).second.getClass().equals(FullObjectSet.class)){
-//
-//
-//
-////								((FullObjectSet) this.objectBinding.get(var).second).hasNonEmptyIntersection(((FullObjectSet) s.objectBinding.get(var).second))
-////										&& ((FullObjectSet) s.objectBinding.get(var).second).hasNonEmptyIntersection(((FullObjectSet) this.objectBinding.get(var).second));
-//					}
-//					//TODO what about when one is an instance key and the other not?
-//				}
             }
         }
 
@@ -470,7 +445,6 @@ public class JavaEvent extends CFGEvent {
                 return true;
 
         }
-
 
         return false;
     }
