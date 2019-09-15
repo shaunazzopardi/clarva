@@ -24,7 +24,7 @@ Example call: **-jar clarva.jar fast java "./date.lrv" "./bin" main.Main**
 1. A DATE that is a pruned version of Input (2), with which it is enough to monitor Input (3).
 2. Class files of the program with some program statements modified to soundly avoid subsequent [LARVA](http://www.cs.um.edu.mt/svrg/Tools/LARVA/) instrumentation.
 
-Note that instrumentation is optimised by creating a new class with methods for each method call to be instrumented, and by instrumented the bytecode of the original Java program by invoking these new methods for events that have been classed as needed to give the same results as the original instrumentation (modulo the input and output DATEs).
+Note that instrumentation is optimised by creating a new class with methods for each method call to be instrumented, and by instrumenting the bytecode of the original Java program by invoking these new methods for events that have been classed as needed to give the same results as the original instrumentation (modulo the input and output DATEs).
 
 The output class files should then be weaved with the output DATE using the LARVA compiler.
 
