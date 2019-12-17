@@ -1,0 +1,50 @@
+IMPORTS{
+    import main.java.server.proxies.entityinfo.UserInfo;
+    import main.java.server.entities.users.User.PrivacyLevel;
+}
+
+GLOBAL{
+
+    FOREACH(UserInfo u){
+
+        VARIABLES{
+            double cumulativeValue = 0.0;
+            double limit = 100;
+        }
+
+        EVENTS{
+            transact(UserInfo uu,double value) = {*.payToCompany(uu,*,*,*, value)} where {u = uu;}
+            authenticate(UserInfo uu, boolean success) = {uu.authenticate()uponReturning(success)} where {u = uu;}
+            register(UserInfo uu) = {*.createUser()uponReturning(uu)} where{u = uu;}
+            enterDeregister(UserInfo uu) = {uu.deregister()} where{u = uu;}
+        }
+
+        PROPERTY dataProtectionResidual{
+
+            STATES{
+                ACCEPTING{
+                    five
+                }
+                BAD{
+                    bad
+                }
+                NORMAL{
+                    two
+                    three
+                    four
+                }
+                STARTING{
+                    one
+                }
+            }
+
+            TRANSITIONS{
+                one -> two [register(u)\\]
+                two -> two [transact(u,value)\cumulativeValue <= limit\cumulativeValue -= value;]
+                two -> bad [transact(u,value)\cumulativeValue > limit\]
+                two -> three [authenticate(u,success)\success\]
+                three -> four [enterDeregister(u)\\]
+            }
+        }
+    }
+}

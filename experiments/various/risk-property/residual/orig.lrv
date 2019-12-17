@@ -1,0 +1,85 @@
+Imports{
+import main.java.server.*;
+import main.java.server.proxies.entityinfo.UserInfo;
+import main.java.paymentapp.*;
+import main.java.server.entities.companies.*;
+
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.List;
+import java.util.HashMap;
+import java.time.DayOfWeek;
+}
+
+Global{
+
+Variables{
+ Map<Integer,Integer> transCheckedButNotTaken = new HashMap<Integer,Integer>();
+ Map<Integer,Integer> transCheckedAndTaken = new HashMap<Integer,Integer>();
+}
+
+Foreach (UserInfo u){
+
+Variables{
+HashMap<DayOfWeek, Double> dayDeposits = new HashMap<DayOfWeek, Double>();
+}
+
+Events{
+
+activate(UserInfo u1, Boolean success) = {*.checkIfActivated(u1)uponReturning(success)} where {u = u1;}
+
+payFromCard_exit(Boolean success, int cid) = {*.payToCompanyFromCard(UserInfo u1, cid, *,*,*)uponReturning(success)} where {u = u1;}
+
+}
+
+Property riskProperty{
+
+States{
+Bad{
+bad
+}
+Normal{
+blacklistedLowRisk blacklistedHighRisk activated
+}
+Starting{
+start
+}
+}
+
+Transitions{
+
+start -> activated [activate\\]
+
+start -> bad [payFromCard_exit\\]
+
+}
+
+}
+
+}
+
+}
+
+METHODS{
+
+
+double risk(UserInfo u){
+	int noOfSuspiciousTransactions = 0;
+	List<Transaction> userHistory = UserInfo.userHistory.get(u.getId());
+	for(Transaction t : userHistory){
+		if(t.destination.isBlacklisted()){
+			noOfSuspiciousTransactions++;
+
+			if(t.destination.getClass().equals(Company.class)){
+				for(UserInfo ui : ((Company) t.destination).usersTransactingWithCompany){
+					if(ui.blacklisted) noOfSuspiciousTransactions += 0.1;
+				}
+			}
+		}
+		else if(t.destination.isGreylisted()) noOfSuspiciousTransactions += 0.5;
+	}
+
+	return userHistory.size() > 0 ? noOfSuspiciousTransactions > userHistory.size() ? noOfSuspiciousTransactions/userHistory.size() : 1 : 0;
+}
+
+}

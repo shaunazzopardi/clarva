@@ -1,0 +1,52 @@
+Imports{
+import main.java.server.*;
+import main.java.server.proxies.entityinfo.UserInfo;
+import main.java.paymentapp.*;
+}
+
+Global{
+
+Variables{
+}
+
+Foreach (UserInfo u){
+
+Variables{
+}
+
+Events{
+
+payFromCard_exit(Boolean success, int cid) = {*.payToCompanyFromCard(UserInfo u1, cid, *,*,*)uponReturning(success)} where {u = u1;}
+
+}
+
+Property noTransactionIfBlackListedProperty{
+
+States{
+Bad{
+bad
+}
+Normal{
+}
+Starting{
+start
+}
+}
+
+Transitions{
+
+start -> bad [payFromCard_exit\u.blacklisted\]
+
+
+}
+
+}
+
+}
+
+}
+
+METHODS{
+
+
+}

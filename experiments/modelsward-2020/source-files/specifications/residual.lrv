@@ -1,0 +1,83 @@
+
+IMPORTS{
+	import main.Menu;
+	import main.User;
+}
+	
+GLOBAL{
+
+
+	FOREACH(User u){
+		VARIABLES{
+			double balance = 0;
+			int lim = 500;	
+		}
+		
+		EVENTS{
+		   login(User u1) = {*.login(long id)uponReturning()} 
+		     where {u1 = Menu.users.get(id); u = u1;}
+		   
+		   logout(User u1) = {*.logout(long id)uponReturning()} 
+		     where {u1 = Menu.users.get(id); u = u1;}
+		   
+		   delete_enter(User u1) = {*.delete(u1)}
+		     where {u = u1;}
+		   
+		   delete_exit(User u1) = {*.delete(u1)uponReturning()}
+		     where {u = u1;}
+		   
+		   deposit(User u1) = {*.deposit(long to, *)uponReturning()}
+		     where {u1 = Menu.users.get(to); u = u1;}
+		   		   
+		   transact_enter(User u1, to, val) = {execution *.transact(long from, to, double val)}
+		     where {u1 = Menu.users.get(from); u = u1;}
+		   
+		   transact_exit(User u1, to, val) = {*.transact(long from, to, double val)uponReturning()}
+		     where {u1 = Menu.users.get(from); u = u1;}
+		   
+		}
+	
+		PROPERTY firstProperty {
+			STATES{
+				ACCEPTING {inDelete}
+				BAD {bad}
+				NORMAL {loggedIn}
+	    		STARTING {loggedOut}
+	   		}
+	   
+	   		TRANSITIONS{
+			    loggedOut->bad[delete_enter(u)]
+			    loggedOut->loggedIn[login(u) \ u.activated]
+			    loggedIn->loggedOut[logout(u)]
+			    loggedIn->inDelete[delete_enter(u)]
+			}
+		}
+	
+	
+		PROPERTY thirdProperty {
+			STATES{
+				BAD {bad}
+				NORMAL {afterDel}
+	    		STARTING {beforeDel}
+	   		} 
+	   
+	   		TRANSITIONS{
+			    beforeDel->afterDel[delete_enter(u)]
+			    afterDel->bad[transact_enter(u,to,val)]
+			}
+		}
+	
+		PROPERTY fourthProperty {
+			STATES{
+				BAD {bad}
+	    		STARTING {init}
+	   		}
+	   
+	   		TRANSITIONS{
+			    init->init[transact_enter(u,to,val) \ val + balance <= lim \ balance += val;]
+			    init->bad[transact_enter(u,to,val) \ val + balance > lim \]
+			}
+		}
+		
+	}
+}

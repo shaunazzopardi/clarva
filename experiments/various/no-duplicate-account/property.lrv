@@ -1,0 +1,48 @@
+Imports{
+import main.java.server.*;
+import main.java.server.proxies.entityinfo.UserInfo;
+import main.java.paymentapp.*;
+import java.util.*;
+}
+
+Global{
+
+Variables{
+	List<Integer> accIds = new ArrayList<Integer>();
+}
+
+Events{
+
+createAccount(int id) = {*.createAccount()uponReturning(id)}
+
+}
+
+Property noDuplicateAccountID{
+
+States{
+Bad{
+bad
+}
+Normal{
+}
+Starting{
+start
+}
+}
+
+Transitions{
+
+start -> bad [createAccount\accIds.contains(id)\]
+start -> start [createAccount\!accIds.contains(id)\accIds.add(id);]
+
+
+}
+
+}
+
+}
+
+METHODS{
+
+
+}

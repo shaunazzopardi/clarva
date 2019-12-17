@@ -1,0 +1,57 @@
+IMPORTS{
+    import main.java.server.proxies.entityinfo.UserInfo;
+    import main.java.server.entities.users.User.PrivacyLevel;
+}
+
+GLOBAL{
+
+    FOREACH(UserInfo u){
+
+        VARIABLES{
+            double cumulativeValue = 0.0;
+            double limit = 100;
+        }
+
+        EVENTS{
+            transact(UserInfo uu,double value) = {*.payToCompany(uu,*,*,*, value)} where {u = uu;}
+            authenticate(UserInfo uu, boolean success) = {uu.authenticate()uponReturning(success)} where {u = uu;}
+            register(UserInfo uu) = {*.createUser()uponReturning(uu)} where{u = uu;}
+            enterDeregister(UserInfo uu) = {uu.deregister()} where{u = uu;}
+            exitingDeregister(UserInfo uu) = {uu.deregister()uponReturning()} where{u = uu;}
+            sanitize(UserInfo uu) = {uu.sanitizeInfo()} where{u = uu;}
+            infoLossEvent(UserInfo uu) = {*.askAdmin(uu)} where{u = uu;}
+        }
+
+        PROPERTY dataProtection{
+
+            STATES{
+                ACCEPTING{
+                    five
+                }
+                BAD{
+                    bad
+                }
+                NORMAL{
+                    two
+                    three
+                    four
+                }
+                STARTING{
+                    one
+                }
+            }
+
+            TRANSITIONS{
+                one -> two [register(u)\\]
+                two -> two [transact(u,value)\cumulativeValue <= limit\cumulativeValue -= value;]
+                two -> bad [transact(u,value)\cumulativeValue > limit\]
+                two -> three [authenticate(u,success)\success\]
+                three -> bad [infoLossEvent(u)\u.privacyLevel != PrivacyLevel.ThirdPartiesOK\]
+                three -> four [enterDeregister(u)\\]
+                four -> five [sanitize(u)\\]
+                four -> bad [infoLossEvent(u)\\]
+                four -> bad [exitingDeregister(u,*)\\]
+            }
+        }
+    }
+}
